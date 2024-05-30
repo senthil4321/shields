@@ -1,8 +1,7 @@
-'use strict'
-
-const t = (module.exports = require('../tester').createServiceTester())
-const { withRegex } = require('../test-validators')
-const { sampleProjectUuid, noSymfonyToken } = require('./symfony-test-helpers')
+import { createServiceTester } from '../tester.js'
+import { withRegex } from '../test-validators.js'
+import { sampleProjectUuid, noSymfonyToken } from './symfony-test-helpers.js'
+export const t = await createServiceTester()
 
 t.create('valid project stars')
   .skipWhen(noSymfonyToken)
@@ -11,7 +10,7 @@ t.create('valid project stars')
   .expectBadge({
     label: 'stars',
     message: withRegex(
-      /^(?=.{4}$)(\u2605{0,4}[\u00BC\u00BD\u00BE]?\u2606{0,4})$/
+      /^(?=.{4}$)(\u2605{0,4}[\u00BC\u00BD\u00BE]?\u2606{0,4})$/,
     ),
   })
 

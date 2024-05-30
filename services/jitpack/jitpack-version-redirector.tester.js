@@ -1,13 +1,15 @@
-'use strict'
+import { ServiceTester } from '../tester.js'
 
-const { ServiceTester } = require('../tester')
-
-const t = (module.exports = new ServiceTester({
+export const t = new ServiceTester({
   id: 'JitpackVersionRedirect',
   title: 'JitpackVersionRedirect',
   pathPrefix: '/jitpack/v',
-}))
+})
 
-t.create('jitpack version redirect')
+t.create('jitpack version redirect (no vcs)')
   .get('/jitpack/maven-simple.svg')
-  .expectRedirect('/jitpack/v/github/jitpack/maven-simple.svg')
+  .expectRedirect('/jitpack/version/com.github.jitpack/maven-simple.svg')
+
+t.create('jitpack version redirect (github)')
+  .get('/github/jitpack/maven-simple.svg')
+  .expectRedirect('/jitpack/version/com.github.jitpack/maven-simple.svg')

@@ -1,6 +1,4 @@
-'use strict'
-
-const stream = require('stream')
+import stream from 'stream'
 
 function streamFromString(str) {
   const newStream = new stream.Readable()
@@ -13,12 +11,14 @@ function streamFromString(str) {
 
 function sendSVG(res, askres, end) {
   askres.setHeader('Content-Type', 'image/svg+xml;charset=utf-8')
+  askres.setHeader('Content-Length', Buffer.byteLength(res, 'utf8'))
   end(null, { template: streamFromString(res) })
 }
 
 function sendJSON(res, askres, end) {
   askres.setHeader('Content-Type', 'application/json')
   askres.setHeader('Access-Control-Allow-Origin', '*')
+  askres.setHeader('Content-Length', Buffer.byteLength(res, 'utf8'))
   end(null, { template: streamFromString(res) })
 }
 
@@ -32,6 +32,4 @@ function makeSend(format, askres, end) {
   }
 }
 
-module.exports = {
-  makeSend,
-}
+export { makeSend }

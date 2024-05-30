@@ -1,24 +1,15 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { expect } = require('chai')
-const sinon = require('sinon')
-const BaseJsonService = require('./base-json')
+import Joi from 'joi'
+import { expect } from 'chai'
+import sinon from 'sinon'
+import BaseJsonService from './base-json.js'
 
 const dummySchema = Joi.object({
   requiredString: Joi.string().required(),
 }).required()
 
 class DummyJsonService extends BaseJsonService {
-  static get category() {
-    return 'cat'
-  }
-
-  static get route() {
-    return {
-      base: 'foo',
-    }
-  }
+  static category = 'cat'
+  static route = { base: 'foo' }
 
   async handle() {
     const { requiredString } = await this._requestJson({
@@ -31,84 +22,84 @@ class DummyJsonService extends BaseJsonService {
 
 describe('BaseJsonService', function () {
   describe('Making requests', function () {
-    let sendAndCacheRequest
+    let requestFetcher
     beforeEach(function () {
-      sendAndCacheRequest = sinon.stub().returns(
+      requestFetcher = sinon.stub().returns(
         Promise.resolve({
           buffer: '{"some": "json"}',
           res: { statusCode: 200 },
-        })
+        }),
       )
     })
 
-    it('invokes _sendAndCacheRequest', async function () {
+    it('invokes _requestFetcher', async function () {
       await DummyJsonService.invoke(
-        { sendAndCacheRequest },
-        { handleInternalErrors: false }
+        { requestFetcher },
+        { handleInternalErrors: false },
       )
 
-      expect(sendAndCacheRequest).to.have.been.calledOnceWith(
+      expect(requestFetcher).to.have.been.calledOnceWith(
         'http://example.com/foo.json',
         {
           headers: { Accept: 'application/json' },
-        }
+        },
       )
     })
 
-    it('forwards options to _sendAndCacheRequest', async function () {
+    it('forwards options to _requestFetcher', async function () {
       class WithOptions extends DummyJsonService {
         async handle() {
           const { value } = await this._requestJson({
             schema: dummySchema,
             url: 'http://example.com/foo.json',
-            options: { method: 'POST', qs: { queryParam: 123 } },
+            options: { method: 'POST', searchParams: { queryParam: 123 } },
           })
           return { message: value }
         }
       }
 
       await WithOptions.invoke(
-        { sendAndCacheRequest },
-        { handleInternalErrors: false }
+        { requestFetcher },
+        { handleInternalErrors: false },
       )
 
-      expect(sendAndCacheRequest).to.have.been.calledOnceWith(
+      expect(requestFetcher).to.have.been.calledOnceWith(
         'http://example.com/foo.json',
         {
           headers: { Accept: 'application/json' },
           method: 'POST',
-          qs: { queryParam: 123 },
-        }
+          searchParams: { queryParam: 123 },
+        },
       )
     })
   })
 
   describe('Making badges', function () {
     it('handles valid json responses', async function () {
-      const sendAndCacheRequest = async () => ({
+      const requestFetcher = async () => ({
         buffer: '{"requiredString": "some-string"}',
         res: { statusCode: 200 },
       })
       expect(
         await DummyJsonService.invoke(
-          { sendAndCacheRequest },
-          { handleInternalErrors: false }
-        )
+          { requestFetcher },
+          { handleInternalErrors: false },
+        ),
       ).to.deep.equal({
         message: 'some-string',
       })
     })
 
     it('handles json responses which do not match the schema', async function () {
-      const sendAndCacheRequest = async () => ({
+      const requestFetcher = async () => ({
         buffer: '{"unexpectedKey": "some-string"}',
         res: { statusCode: 200 },
       })
       expect(
         await DummyJsonService.invoke(
-          { sendAndCacheRequest },
-          { handleInternalErrors: false }
-        )
+          { requestFetcher },
+          { handleInternalErrors: false },
+        ),
       ).to.deep.equal({
         isError: true,
         color: 'lightgray',
@@ -117,15 +108,15 @@ describe('BaseJsonService', function () {
     })
 
     it('handles unparseable json responses', async function () {
-      const sendAndCacheRequest = async () => ({
+      const requestFetcher = async () => ({
         buffer: 'not json',
         res: { statusCode: 200 },
       })
       expect(
         await DummyJsonService.invoke(
-          { sendAndCacheRequest },
-          { handleInternalErrors: false }
-        )
+          { requestFetcher },
+          { handleInternalErrors: false },
+        ),
       ).to.deep.equal({
         isError: true,
         color: 'lightgray',

@@ -1,8 +1,6 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const validate = require('../../core/base-service/validate')
-const { BaseJsonService, NotFound } = require('..')
+import Joi from 'joi'
+import validate from '../../core/base-service/validate.js'
+import { BaseJsonService, NotFound } from '../index.js'
 
 const extensionQuerySchema = Joi.object({
   results: Joi.array()
@@ -16,21 +14,31 @@ const extensionQuerySchema = Joi.object({
                   Joi.object({
                     statisticName: Joi.string().required(),
                     value: Joi.number().required(),
-                  })
+                  }),
                 )
-                .required(),
+                .default([]),
               versions: Joi.array()
                 .items(
                   Joi.object({
-                    version: Joi.string().regex(/^(\d+\.\d+\.\d+)(\.\d+)?$/),
-                  })
+                    version: Joi.string().required(),
+                    properties: Joi.array()
+                      .items(
+                        Joi.object({
+                          key: Joi.string().required(),
+                          value: Joi.any().required(),
+                        }),
+                      )
+                      .default([]),
+                  }),
                 )
                 .min(1)
                 .required(),
-            })
+              releaseDate: Joi.string().required(),
+              lastUpdated: Joi.string().required(),
+            }),
           )
           .required(),
-      })
+      }),
     )
     .required(),
 }).required()
@@ -43,23 +51,10 @@ const statisticSchema = Joi.object().keys({
   ratingcount: Joi.number().default(0),
 })
 
-module.exports = class VisualStudioMarketplaceBase extends BaseJsonService {
-  static get keywords() {
-    return [
-      'vscode',
-      'tfs',
-      'vsts',
-      'visual-studio-marketplace',
-      'vs-marketplace',
-      'vscode-marketplace',
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return {
-      label: 'vs marketplace',
-      color: 'blue',
-    }
+export default class VisualStudioMarketplaceBase extends BaseJsonService {
+  static defaultBadgeData = {
+    label: 'vs marketplace',
+    color: 'blue',
   }
 
   async fetch({ extensionId }) {
@@ -71,7 +66,12 @@ module.exports = class VisualStudioMarketplaceBase extends BaseJsonService {
           criteria: [{ filterType: 7, value: extensionId }],
         },
       ],
-      flags: 914,
+      // Microsoft does not provide a clear API doc. It seems that the flag value is calculated
+      // as the combined hex values of the requested flags, converted to base 10.
+      // This was found using the vscode repo at:
+      // https://github.com/microsoft/vscode/blob/main/src/vs/platform/extensionManagement/common/extensionGalleryService.ts
+      // This flag value is 0x192.
+      flags: 402,
     }
     const options = {
       method: 'POST',
@@ -86,7 +86,7 @@ module.exports = class VisualStudioMarketplaceBase extends BaseJsonService {
       schema: extensionQuerySchema,
       url,
       options,
-      errorMessages: {
+      httpErrors: {
         400: 'invalid extension id',
       },
     })

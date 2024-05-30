@@ -1,67 +1,42 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { coveragePercentage } = require('../color-formatters')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import { coveragePercentage } from '../color-formatters.js'
+import { BaseJsonService, pathParam, queryParam } from '../index.js'
 
 const schema = Joi.object({
   covered_percent: Joi.number().min(0).max(100).required(),
 }).required()
 
-module.exports = class Coveralls extends BaseJsonService {
-  static get category() {
-    return 'coverage'
+const queryParamSchema = Joi.object({
+  branch: Joi.string(),
+}).required()
+
+export default class Coveralls extends BaseJsonService {
+  static category = 'coverage'
+  static route = {
+    base: 'coverallsCoverage',
+    pattern: ':vcsType(github|bitbucket|gitlab)/:user/:repo+',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'coveralls',
-      pattern: ':vcsType(github|bitbucket)?/:user/:repo/:branch*',
-    }
+  static openApi = {
+    '/coverallsCoverage/{vcsType}/{user}/{repo}': {
+      get: {
+        summary: 'Coveralls',
+        parameters: [
+          pathParam({
+            name: 'vcsType',
+            example: 'github',
+            schema: { type: 'string', enum: this.getEnum('vcsType') },
+          }),
+          pathParam({ name: 'user', example: 'jekyll' }),
+          pathParam({ name: 'repo', example: 'jekyll' }),
+          queryParam({ name: 'branch', example: 'master' }),
+        ],
+      },
+    },
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'Coveralls github',
-        pattern: ':vcsType/:user/:repo',
-        namedParams: { vcsType: 'github', user: 'jekyll', repo: 'jekyll' },
-        staticPreview: this.render({ coverage: 86 }),
-      },
-      {
-        title: 'Coveralls github branch',
-        pattern: ':vcsType/:user/:repo/:branch',
-        namedParams: {
-          vcsType: 'github',
-          user: 'lemurheavy',
-          repo: 'coveralls-ruby',
-          branch: 'master',
-        },
-        staticPreview: this.render({ coverage: 91.81 }),
-      },
-      {
-        title: 'Coveralls bitbucket',
-        pattern: ':vcsType/:user/:repo',
-        namedParams: { vcsType: 'bitbucket', user: 'pyKLIP', repo: 'pyklip' },
-        staticPreview: this.render({ coverage: 86 }),
-      },
-      {
-        title: 'Coveralls bitbucket branch',
-        pattern: ':vcsType/:user/:repo/:branch',
-        namedParams: {
-          vcsType: 'bitbucket',
-          user: 'pyKLIP',
-          repo: 'pyklip',
-          branch: 'master',
-        },
-        staticPreview: this.render({ coverage: 96 }),
-      },
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return { label: 'coverage' }
-  }
+  static defaultBadgeData = { label: 'coverage' }
 
   static render({ coverage }) {
     return {
@@ -76,7 +51,7 @@ module.exports = class Coveralls extends BaseJsonService {
       vcsType || 'github'
     }/${user}/${repo}.json`
     const options = {
-      qs: {
+      searchParams: {
         // The API returns the latest result (across any branch) if no branch is explicitly specified,
         // whereas the Coveralls native badge (and the Shields.io badges for Coveralls) show
         // the coverage for the default branch if no branch is explicitly specified. If the user
@@ -91,13 +66,13 @@ module.exports = class Coveralls extends BaseJsonService {
       schema,
       url,
       options,
-      errorMessages: {
+      httpErrors: {
         404: 'repository not found',
       },
     })
   }
 
-  async handle({ vcsType, user, repo, branch }) {
+  async handle({ vcsType, user, repo }, { branch }) {
     const json = await this.fetch({ vcsType, user, repo, branch })
     return this.constructor.render({ coverage: json.covered_percent })
   }

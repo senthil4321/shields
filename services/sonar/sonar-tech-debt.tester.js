@@ -1,7 +1,6 @@
-'use strict'
-
-const { isPercentage } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isPercentage } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 // The service tests targeting the legacy SonarQube API are mocked
 // because of the lack of publicly accessible, self-hosted, legacy SonarQube instances
@@ -11,8 +10,15 @@ const t = (module.exports = require('../tester').createServiceTester())
 
 t.create('Tech Debt')
   .get(
-    '/tech_debt/org.sonarsource.sonarqube%3Asonarqube.json?server=https://sonarcloud.io'
+    '/tech_debt/brave_brave-core.json?server=https://sonarcloud.io&sonarVersion=9.0',
   )
+  .expectBadge({
+    label: 'tech debt',
+    message: isPercentage,
+  })
+
+t.create('Tech Debt (branch)')
+  .get('/tech_debt/brave_brave-core/master.json?server=https://sonarcloud.io')
   .expectBadge({
     label: 'tech debt',
     message: isPercentage,
@@ -20,7 +26,7 @@ t.create('Tech Debt')
 
 t.create('Tech Debt (legacy API supported)')
   .get(
-    '/tech_debt/org.ow2.petals%3Apetals-se-ase.json?server=http://sonar.petalslink.com&sonarVersion=4.2'
+    '/tech_debt/org.ow2.petals%3Apetals-se-ase.json?server=http://sonar.petalslink.com&sonarVersion=4.2',
   )
   .intercept(nock =>
     nock('http://sonar.petalslink.com/api')
@@ -40,7 +46,7 @@ t.create('Tech Debt (legacy API supported)')
             },
           ],
         },
-      ])
+      ]),
   )
   .expectBadge({
     label: 'tech debt',

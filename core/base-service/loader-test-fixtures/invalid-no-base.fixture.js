@@ -1,5 +1,3 @@
-'use strict'
+class BadNoBaseService {}
 
-class BadService {}
-
-module.exports = BadService
+export default BadNoBaseService

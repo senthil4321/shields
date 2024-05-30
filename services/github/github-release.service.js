@@ -1,83 +1,50 @@
-'use strict'
-
-const { addv } = require('../text-formatters')
-const { version: versionColor } = require('../color-formatters')
-const { redirector } = require('..')
-const { GithubAuthV3Service } = require('./github-auth-service')
-const {
+import Joi from 'joi'
+import { addv } from '../text-formatters.js'
+import { version as versionColor } from '../color-formatters.js'
+import { redirector, pathParam, queryParam } from '../index.js'
+import { GithubAuthV3Service } from './github-auth-service.js'
+import {
   fetchLatestRelease,
   queryParamSchema,
-} = require('./github-common-release')
-const { documentation } = require('./github-helpers')
+  openApiQueryParams,
+} from './github-common-release.js'
+import { documentation } from './github-helpers.js'
+
+const displayNameEnum = ['tag', 'release']
+const extendedQueryParamSchema = Joi.object({
+  display_name: Joi.string()
+    .valid(...displayNameEnum)
+    .default('tag'),
+})
 
 class GithubRelease extends GithubAuthV3Service {
-  static get category() {
-    return 'version'
+  static category = 'version'
+  static route = {
+    base: 'github/v/release',
+    pattern: ':user/:repo',
+    queryParamSchema: queryParamSchema.concat(extendedQueryParamSchema),
   }
 
-  static get route() {
-    return {
-      base: 'github/v/release',
-      pattern: ':user/:repo',
-      queryParamSchema,
-    }
+  static openApi = {
+    '/github/v/release/{user}/{repo}': {
+      get: {
+        summary: 'GitHub Release',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'user', example: 'expressjs' }),
+          pathParam({ name: 'repo', example: 'express' }),
+          ...openApiQueryParams,
+          queryParam({
+            name: 'display_name',
+            example: 'tag',
+            schema: { type: 'string', enum: displayNameEnum },
+          }),
+        ],
+      },
+    },
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'GitHub release (latest by date)',
-        namedParams: { user: 'expressjs', repo: 'express' },
-        queryParams: {},
-        staticPreview: this.render({
-          version: 'v4.16.4',
-          sort: 'date',
-          isPrerelease: false,
-        }),
-        documentation,
-      },
-      {
-        title: 'GitHub release (latest by date including pre-releases)',
-        namedParams: { user: 'expressjs', repo: 'express' },
-        queryParams: { include_prereleases: null },
-        staticPreview: this.render({
-          version: 'v5.0.0-alpha.7',
-          sort: 'date',
-          isPrerelease: true,
-        }),
-        documentation,
-      },
-      {
-        title: 'GitHub release (latest SemVer)',
-        namedParams: { user: 'expressjs', repo: 'express' },
-        queryParams: { sort: 'semver' },
-        staticPreview: this.render({
-          version: 'v4.16.4',
-          sort: 'semver',
-          isPrerelease: false,
-        }),
-        documentation,
-      },
-      {
-        title: 'GitHub release (latest SemVer including pre-releases)',
-        namedParams: { user: 'expressjs', repo: 'express' },
-        queryParams: { sort: 'semver', include_prereleases: null },
-        staticPreview: this.render({
-          version: 'v5.0.0-alpha.7',
-          sort: 'semver',
-          isPrerelease: true,
-        }),
-        documentation,
-      },
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return {
-      label: 'release',
-      namedLogo: 'github',
-    }
-  }
+  static defaultBadgeData = { label: 'release' }
 
   static render({ version, sort, isPrerelease }) {
     let color = 'blue'
@@ -86,16 +53,29 @@ class GithubRelease extends GithubAuthV3Service {
     return { message: addv(version), color }
   }
 
+  static transform(latestRelease, display) {
+    const { name, tag_name: tagName, prerelease: isPrerelease } = latestRelease
+    if (display === 'tag') {
+      return { isPrerelease, version: tagName }
+    }
+
+    return { version: name || tagName, isPrerelease }
+  }
+
   async handle({ user, repo }, queryParams) {
     const latestRelease = await fetchLatestRelease(
       this,
       { user, repo },
-      queryParams
+      queryParams,
+    )
+    const { version, isPrerelease } = this.constructor.transform(
+      latestRelease,
+      queryParams.display_name,
     )
     return this.constructor.render({
-      version: latestRelease.tag_name,
+      version,
       sort: queryParams.sort,
-      isPrerelease: latestRelease.prerelease,
+      isPrerelease,
     })
   }
 }
@@ -134,7 +114,4 @@ const redirects = {
   }),
 }
 
-module.exports = {
-  GithubRelease,
-  ...redirects,
-}
+export { GithubRelease, redirects }

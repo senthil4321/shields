@@ -1,15 +1,14 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { isMetric, isMetricOverTimePeriod } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import Joi from 'joi'
+import { isMetric, isMetricOverTimePeriod } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 const isDownloadsColor = Joi.equal(
   'red',
   'yellow',
   'yellowgreen',
   'green',
-  'brightgreen'
+  'brightgreen',
 )
 
 t.create('total downloads (valid)').get('/dt/vibe-d.json').expectBadge({

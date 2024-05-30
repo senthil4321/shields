@@ -6,19 +6,20 @@ public:
       enabled: true
       url: https://metrics.shields.io/telegraf
       instanceIdFrom: env-var
-      instanceIdEnvVarName: HEROKU_DYNO_ID
+      instanceIdEnvVarName: FLY_ALLOC_ID
       envLabel: shields-production
 
   ssl:
-    isSecure: true
+    isSecure: false
 
   cors:
     allowedOrigin: ['http://shields.io', 'https://shields.io']
 
-  redirectUrl: 'https://shields.io/'
+  services:
+    gitlab:
+      authorizedOrigins: 'https://gitlab.com'
 
   rasterUrl: 'https://raster.shields.io'
-
-private:
-  # These are not really private; they should be moved to `public`.
-  shields_ips: ['192.99.59.72', '51.254.114.150', '149.56.96.133']
+  userAgentBase: 'Shields.io'
+  requireCloudflare: true
+  requestTimeoutSeconds: 20

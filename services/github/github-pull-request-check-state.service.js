@@ -1,10 +1,22 @@
-'use strict'
+import Joi from 'joi'
+import countBy from 'lodash.countby'
+import { pathParams } from '../index.js'
+import { GithubAuthV3Service } from './github-auth-service.js'
+import { fetchIssue } from './github-common-fetch.js'
+import {
+  documentation as commonDocumentation,
+  httpErrorsFor,
+} from './github-helpers.js'
 
-const Joi = require('@hapi/joi')
-const countBy = require('lodash.countby')
-const { GithubAuthV3Service } = require('./github-auth-service')
-const { fetchIssue } = require('./github-common-fetch')
-const { documentation, errorMessagesFor } = require('./github-helpers')
+const description = `
+Displays the status of a pull request, as reported by the Commit Status API.
+Nowadays, GitHub Actions and many third party integrations report state via the
+Checks API. If this badge does not show expected values, please try out our
+corresponding Check Runs badge instead. You can read more about status checks in
+the [GitHub documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks).
+
+${commonDocumentation}
+`
 
 const schema = Joi.object({
   state: Joi.equal('failure', 'pending', 'success').required(),
@@ -12,64 +24,62 @@ const schema = Joi.object({
     .items(
       Joi.object({
         state: Joi.equal('error', 'failure', 'pending', 'success').required(),
-      })
+      }),
     )
     .default([]),
 }).required()
 
-const keywords = ['pullrequest', 'detail']
-
-module.exports = class GithubPullRequestCheckState extends GithubAuthV3Service {
-  static get category() {
-    return 'build'
+export default class GithubPullRequestCheckState extends GithubAuthV3Service {
+  static category = 'build'
+  static route = {
+    base: 'github/status',
+    pattern: ':variant(s|contexts)/pulls/:user/:repo/:number(\\d+)',
   }
 
-  static get route() {
-    return {
-      base: 'github/status',
-      pattern: ':variant(s|contexts)/pulls/:user/:repo/:number(\\d+)',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'GitHub pull request check state',
-        pattern: 's/pulls/:user/:repo/:number',
-        namedParams: {
-          user: 'badges',
-          repo: 'shields',
-          number: '1110',
-        },
-        staticPreview: this.render({ variant: 's', state: 'pending' }),
-        keywords,
-        documentation,
+  static openApi = {
+    '/github/status/s/pulls/{user}/{repo}/{number}': {
+      get: {
+        summary: 'GitHub pull request status',
+        description,
+        parameters: pathParams(
+          {
+            name: 'user',
+            example: 'badges',
+          },
+          {
+            name: 'repo',
+            example: 'shields',
+          },
+          {
+            name: 'number',
+            example: '1110',
+          },
+        ),
       },
-      {
-        title: 'GitHub pull request check contexts',
-        pattern: 'contexts/pulls/:user/:repo/:number',
-        namedParams: {
-          user: 'badges',
-          repo: 'shields',
-          number: '1110',
-        },
-        staticPreview: this.render({
-          variant: 'contexts',
-          state: 'pending',
-          stateCounts: { passed: 5, pending: 1 },
-        }),
-        keywords,
-        documentation,
+    },
+    '/github/status/contexts/pulls/{user}/{repo}/{number}': {
+      get: {
+        summary: 'GitHub pull request check contexts',
+        description,
+        parameters: pathParams(
+          {
+            name: 'user',
+            example: 'badges',
+          },
+          {
+            name: 'repo',
+            example: 'shields',
+          },
+          {
+            name: 'number',
+            example: '1110',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'checks',
-      namedLogo: 'github',
-    }
-  }
+  static defaultBadgeData = { label: 'checks' }
 
   static render({ variant, state, stateCounts }) {
     let message
@@ -106,7 +116,7 @@ module.exports = class GithubPullRequestCheckState extends GithubAuthV3Service {
     const json = await this._requestJson({
       schema,
       url: `/repos/${user}/${repo}/commits/${ref}/status`,
-      errorMessages: errorMessagesFor('commit not found'),
+      httpErrors: httpErrorsFor('commit not found'),
     })
     const { state, stateCounts } = this.constructor.transform(json)
 

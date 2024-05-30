@@ -1,55 +1,49 @@
-'use strict'
+import { pathParams } from '../index.js'
+import { starRating } from '../text-formatters.js'
+import { floorCount } from '../color-formatters.js'
+import VisualStudioMarketplaceBase from './visual-studio-marketplace-base.js'
 
-const { starRating } = require('../text-formatters')
-const { floorCount } = require('../color-formatters')
-const VisualStudioMarketplaceBase = require('./visual-studio-marketplace-base')
+export default class VisualStudioMarketplaceRating extends VisualStudioMarketplaceBase {
+  static category = 'rating'
 
-module.exports = class VisualStudioMarketplaceRating extends VisualStudioMarketplaceBase {
-  static get category() {
-    return 'rating'
+  static route = {
+    base: '',
+    pattern:
+      '(visual-studio-marketplace|vscode-marketplace)/:format(r|stars)/:extensionId',
   }
 
-  static get route() {
-    return {
-      base: '',
-      pattern:
-        '(visual-studio-marketplace|vscode-marketplace)/:format(r|stars)/:extensionId',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Visual Studio Marketplace Rating',
-        pattern: 'visual-studio-marketplace/r/:extensionId',
-        namedParams: { extensionId: 'ritwickdey.LiveServer' },
-        staticPreview: this.render({
-          format: 'r',
-          averageRating: 4.79,
-          ratingCount: 145,
-        }),
-        keywords: this.keywords,
+  static openApi = {
+    '/visual-studio-marketplace/{format}/{extensionId}': {
+      get: {
+        summary: 'Visual Studio Marketplace Rating',
+        parameters: pathParams(
+          {
+            name: 'format',
+            example: 'r',
+            description: 'rating (r) or stars',
+            schema: { type: 'string', enum: this.getEnum('format') },
+          },
+          {
+            name: 'extensionId',
+            example: 'ritwickdey.LiveServer',
+          },
+        ),
       },
-      {
-        title: 'Visual Studio Marketplace Rating (Stars)',
-        pattern: 'visual-studio-marketplace/stars/:extensionId',
-        namedParams: { extensionId: 'ritwickdey.LiveServer' },
-        staticPreview: this.render({
-          format: 'stars',
-          averageRating: 4.5,
-        }),
-        keywords: this.keywords,
-      },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'rating',
-    }
+  static defaultBadgeData = {
+    label: 'rating',
   }
 
   static render({ format, averageRating, ratingCount }) {
+    if (ratingCount < 1) {
+      return {
+        message: 'no ratings',
+        color: 'inactive',
+      }
+    }
+
     const message =
       format === 'r'
         ? `${averageRating.toFixed(1)}/5 (${ratingCount})`

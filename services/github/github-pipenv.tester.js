@@ -1,21 +1,19 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { ServiceTester } = require('../tester')
-const {
+import Joi from 'joi'
+import { ServiceTester } from '../tester.js'
+import {
   isVPlusDottedVersionAtLeastOne,
   isVPlusDottedVersionNClausesWithOptionalSuffix,
-} = require('../test-validators')
+} from '../test-validators.js'
 
 // e.g. v19.3b0
 const isBlackVersion = Joi.string().regex(/^v\d+(\.\d+)*(.*)?$/)
 const isShortSha = Joi.string().regex(/[0-9a-f]{7}/)
 
-const t = (module.exports = new ServiceTester({
+export const t = new ServiceTester({
   id: 'GithubPipenv',
   title: 'GithubPipenv',
   pathPrefix: '/github/pipenv',
-}))
+})
 
 t.create('Locked Python version')
   .get('/locked/python-version/metabolize/rq-dashboard-on-heroku.json')
@@ -40,7 +38,7 @@ t.create('Locked Python version (pipfile.lock has no python version)')
 
 t.create('Locked version of default dependency')
   .get(
-    '/locked/dependency-version/metabolize/rq-dashboard-on-heroku/rq-dashboard.json'
+    '/locked/dependency-version/metabolize/rq-dashboard-on-heroku/rq-dashboard.json',
   )
   .expectBadge({
     label: 'rq-dashboard',
@@ -49,7 +47,7 @@ t.create('Locked version of default dependency')
 
 t.create('Locked version of default dependency (branch)')
   .get(
-    '/locked/dependency-version/metabolize/rq-dashboard-on-heroku/rq-dashboard/master.json'
+    '/locked/dependency-version/metabolize/rq-dashboard-on-heroku/rq-dashboard/main.json',
   )
   .expectBadge({
     label: 'rq-dashboard',
@@ -58,7 +56,7 @@ t.create('Locked version of default dependency (branch)')
 
 t.create('Locked version of dev dependency')
   .get(
-    '/locked/dependency-version/metabolize/rq-dashboard-on-heroku/dev/black.json'
+    '/locked/dependency-version/metabolize/rq-dashboard-on-heroku/dev/black.json',
   )
   .expectBadge({
     label: 'black',
@@ -67,7 +65,7 @@ t.create('Locked version of dev dependency')
 
 t.create('Locked version of dev dependency (branch)')
   .get(
-    '/locked/dependency-version/metabolize/rq-dashboard-on-heroku/dev/black/master.json'
+    '/locked/dependency-version/metabolize/rq-dashboard-on-heroku/dev/black/main.json',
   )
   .expectBadge({
     label: 'black',
@@ -76,7 +74,7 @@ t.create('Locked version of dev dependency (branch)')
 
 t.create('Locked version of unknown dependency')
   .get(
-    '/locked/dependency-version/metabolize/rq-dashboard-on-heroku/dev/i-made-this-up.json'
+    '/locked/dependency-version/metabolize/rq-dashboard-on-heroku/dev/i-made-this-up.json',
   )
   .expectBadge({
     label: 'dependency',
@@ -85,9 +83,9 @@ t.create('Locked version of unknown dependency')
 
 t.create('Locked version of VCS dependency')
   .get(
-    '/locked/dependency-version/DemocracyClub/aggregator-api/dc-base-theme.json'
+    '/locked/dependency-version/thorn-oss/perception/dev/videoalignment.json',
   )
   .expectBadge({
-    label: 'dc-base-theme',
+    label: 'videoalignment',
     message: isShortSha,
   })

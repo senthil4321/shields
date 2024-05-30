@@ -1,7 +1,29 @@
-'use strict'
+import Joi from 'joi'
+// see https://github.com/badges/shields/pull/1690
+import { NotFound } from '../index.js'
+const dockerBlue = '066da5'
 
-const dockerBlue = '066da5' // see https://github.com/badges/shields/pull/1690
-const { NotFound } = require('..')
+const archEnum = [
+  'amd64',
+  'arm',
+  'arm64',
+  's390x',
+  '386',
+  'ppc64',
+  'ppc64le',
+  'wasm',
+  'mips',
+  'mipsle',
+  'mips64',
+  'mips64le',
+  'riscv64',
+]
+
+// Valid architecture values: https://golang.org/doc/install/source#environment (GOARCH)
+const archSchema = Joi.alternatives(
+  Joi.string().valid(...archEnum),
+  Joi.number().valid(386).cast('string'),
+)
 
 function buildDockerUrl(badgeName, includeTagRoute) {
   if (includeTagRoute) {
@@ -36,8 +58,8 @@ async function getMultiPageData({ user, repo, fetch }) {
 
   const pageData = await Promise.all(
     [...Array(numberOfPages - 1).keys()].map((_, i) =>
-      fetch({ user, repo, page: ++i + 1 })
-    )
+      fetch({ user, repo, page: ++i + 1 }),
+    ),
   )
   return [...data.results].concat(...pageData.map(p => p.results))
 }
@@ -55,7 +77,9 @@ function getDigestSemVerMatches({ data, digest }) {
   return version
 }
 
-module.exports = {
+export {
+  archEnum,
+  archSchema,
   dockerBlue,
   buildDockerUrl,
   getDockerHubUser,

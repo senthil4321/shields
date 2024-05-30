@@ -1,13 +1,24 @@
-'use strict'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { globSync } from 'glob'
+import countBy from 'lodash.countby'
+import categories from '../../services/categories.js'
+import BaseService from './base.js'
+import { assertValidServiceDefinitionExport } from './service-definitions.js'
 
-const path = require('path')
-const glob = require('glob')
-const countBy = require('lodash.countby')
-const categories = require('../../services/categories')
-const BaseService = require('./base')
-const { assertValidServiceDefinitionExport } = require('./service-definitions')
+const serviceDir = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  'services',
+)
 
-const serviceDir = path.join(__dirname, '..', '..', 'services')
+function toUnixPath(path) {
+  // glob does not allow \ as a path separator
+  // see https://github.com/isaacs/node-glob/blob/main/changelog.md#80
+  // so we need to convert to use / for use with glob
+  return path.replace(/\\/g, '/')
+}
 
 class InvalidService extends Error {
   constructor(message) {
@@ -16,56 +27,8 @@ class InvalidService extends Error {
   }
 }
 
-function loadServiceClasses(servicePaths) {
-  if (!servicePaths) {
-    servicePaths = glob.sync(path.join(serviceDir, '**', '*.service.js'))
-  }
-
-  let serviceClasses = []
-  servicePaths.forEach(servicePath => {
-    const module = require(servicePath)
-
-    const theseServiceClasses = []
-    if (
-      !module ||
-      (module.constructor === Array && module.length === 0) ||
-      (module.constructor === Object && Object.keys(module).length === 0)
-    ) {
-      throw new InvalidService(
-        `Expected ${servicePath} to export a service or a collection of services`
-      )
-    } else if (module.prototype instanceof BaseService) {
-      theseServiceClasses.push(module)
-    } else if (module.constructor === Array || module.constructor === Object) {
-      for (const key in module) {
-        const serviceClass = module[key]
-        if (serviceClass.prototype instanceof BaseService) {
-          theseServiceClasses.push(serviceClass)
-        } else {
-          throw new InvalidService(
-            `Expected ${servicePath} to export a service or a collection of services; one of them was ${serviceClass}`
-          )
-        }
-      }
-    } else {
-      throw new InvalidService(
-        `Expected ${servicePath} to export a service or a collection of services; got ${module}`
-      )
-    }
-
-    // Decorate each service class with the directory that contains it.
-    theseServiceClasses.forEach(serviceClass => {
-      serviceClass.serviceFamily = servicePath
-        .replace(serviceDir, '')
-        .split(path.sep)[1]
-    })
-
-    serviceClasses = serviceClasses.concat(theseServiceClasses)
-  })
-
-  serviceClasses.forEach(ServiceClass => ServiceClass.validateDefinition())
-
-  return serviceClasses
+function getServicePaths(pattern) {
+  return globSync(toUnixPath(path.join(serviceDir, '**', pattern))).sort()
 }
 
 function assertNamesUnique(names, { message }) {
@@ -80,18 +43,63 @@ function assertNamesUnique(names, { message }) {
   }
 }
 
-function checkNames() {
-  const services = loadServiceClasses()
+async function loadServiceClasses(servicePaths) {
+  if (!servicePaths) {
+    servicePaths = getServicePaths('*.service.js')
+  }
+
+  const serviceClasses = []
+  for await (const servicePath of servicePaths) {
+    const currentServiceClasses = Object.values(
+      await import(`file://${servicePath}`),
+    ).flatMap(element =>
+      typeof element === 'object' ? Object.values(element) : element,
+    )
+
+    if (currentServiceClasses.length === 0) {
+      throw new InvalidService(
+        `Expected ${servicePath} to export a service or a collection of services`,
+      )
+    }
+    currentServiceClasses.forEach(serviceClass => {
+      if (serviceClass && serviceClass.prototype instanceof BaseService) {
+        // Decorate each service class with the directory that contains it.
+        serviceClass.serviceFamily = servicePath
+          .replace(serviceDir, '')
+          .split(path.sep)[1]
+        serviceClass.validateDefinition()
+        return serviceClasses.push(serviceClass)
+      }
+      throw new InvalidService(
+        `Expected ${servicePath} to export a service or a collection of services; one of them was ${serviceClass}`,
+      )
+    })
+  }
+
   assertNamesUnique(
-    services.map(({ name }) => name),
+    serviceClasses.map(({ name }) => name),
     {
       message: 'Duplicate service names found',
-    }
+    },
   )
+
+  const routeSummaries = []
+  serviceClasses.forEach(function (serviceClass) {
+    if (serviceClass.openApi) {
+      for (const route of Object.values(serviceClass.openApi)) {
+        routeSummaries.push(route.get.summary)
+      }
+    }
+  })
+  assertNamesUnique(routeSummaries, {
+    message: 'Duplicate route summary found',
+  })
+
+  return serviceClasses
 }
 
-function collectDefinitions() {
-  const services = loadServiceClasses()
+async function collectDefinitions() {
+  const services = (await loadServiceClasses())
     // flatMap.
     .map(ServiceClass => ServiceClass.getDefinition())
     .reduce((accum, these) => accum.concat(these), [])
@@ -103,16 +111,18 @@ function collectDefinitions() {
   return result
 }
 
-function loadTesters() {
-  return glob
-    .sync(path.join(serviceDir, '**', '*.tester.js'))
-    .map(path => require(path))
+async function loadTesters() {
+  return Promise.all(
+    getServicePaths('*.tester.js').map(
+      async path => await import(`file://${path}`),
+    ),
+  )
 }
 
-module.exports = {
+export {
   InvalidService,
   loadServiceClasses,
-  checkNames,
+  getServicePaths,
   collectDefinitions,
   loadTesters,
 }

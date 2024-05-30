@@ -1,8 +1,7 @@
-'use strict'
-
-const t = (module.exports = require('../tester').createServiceTester())
-const { isIntegerPercentage } = require('../test-validators')
-const { sprintId, sprintQueryString } = require('./jira-test-helpers')
+import { createServiceTester } from '../tester.js'
+import { isIntegerPercentage } from '../test-validators.js'
+import { sprintId, sprintQueryString } from './jira-test-helpers.js'
+export const t = await createServiceTester()
 
 t.create('unknown sprint')
   .get('/abc.json?baseUrl=https://jira.spring.io')
@@ -39,7 +38,7 @@ t.create('100% completion')
             },
           },
         ],
-      })
+      }),
   )
   .expectBadge({
     label: 'completion',
@@ -64,7 +63,7 @@ t.create('0% completion')
             },
           },
         ],
-      })
+      }),
   )
   .expectBadge({
     label: 'completion',
@@ -81,7 +80,7 @@ t.create('no issues in sprint')
       .reply(200, {
         total: 0,
         issues: [],
-      })
+      }),
   )
   .expectBadge({
     label: 'completion',
@@ -111,7 +110,7 @@ t.create('issue with null resolution value')
             },
           },
         ],
-      })
+      }),
   )
   .expectBadge({
     label: 'completion',

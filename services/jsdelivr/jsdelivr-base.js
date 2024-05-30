@@ -1,9 +1,6 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { downloadCount } = require('../color-formatters')
-const { metric } = require('../text-formatters')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import { renderDownloadsBadge } from '../downloads.js'
+import { BaseJsonService } from '../index.js'
 
 const schema = Joi.object({
   total: Joi.number().required(),
@@ -17,22 +14,15 @@ const periodMap = {
 }
 
 class BaseJsDelivrService extends BaseJsonService {
-  static get category() {
-    return 'downloads'
+  static category = 'downloads'
+
+  static defaultBadgeData = {
+    label: 'jsdelivr',
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'jsdelivr',
-    }
-  }
-
-  static render({ period, hits }) {
-    return {
-      message: `${metric(hits)}/${periodMap[period]}`,
-      color: downloadCount(hits),
-    }
+  static render({ period, hits: downloads }) {
+    return renderDownloadsBadge({ downloads, interval: periodMap[period] })
   }
 }
 
-module.exports = { schema, periodMap, BaseJsDelivrService }
+export { schema, periodMap, BaseJsDelivrService }

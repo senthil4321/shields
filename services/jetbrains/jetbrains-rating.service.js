@@ -1,13 +1,12 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { starRating } = require('../text-formatters')
-const { colorScale } = require('../color-formatters')
-const JetbrainsBase = require('./jetbrains-base')
+import Joi from 'joi'
+import { starRating } from '../text-formatters.js'
+import { colorScale } from '../color-formatters.js'
+import { NotFound, pathParams } from '../index.js'
+import JetbrainsBase from './jetbrains-base.js'
 
 const pluginRatingColor = colorScale([2, 3, 4])
 
-const schema = Joi.object({
+const intelliJschema = Joi.object({
   'plugin-repository': Joi.object({
     category: Joi.object({
       'idea-plugin': Joi.array()
@@ -15,7 +14,7 @@ const schema = Joi.object({
         .items(
           Joi.object({
             rating: Joi.string().required(),
-          })
+          }),
         )
         .single()
         .required(),
@@ -23,48 +22,42 @@ const schema = Joi.object({
   }).required(),
 }).required()
 
-module.exports = class JetbrainsRating extends JetbrainsBase {
-  static get category() {
-    return 'rating'
+const jetbrainsSchema = Joi.object({
+  votes: Joi.object()
+    .pattern(Joi.string().required(), Joi.number().required())
+    .required(),
+  meanVotes: Joi.number().min(0).required(),
+  meanRating: Joi.number().min(0).required(),
+}).required()
+
+export default class JetbrainsRating extends JetbrainsBase {
+  static category = 'rating'
+
+  static route = {
+    base: 'jetbrains/plugin/r',
+    pattern: ':format(rating|stars)/:pluginId',
   }
 
-  static get route() {
-    return {
-      base: 'jetbrains/plugin/r',
-      pattern: ':format(rating|stars)/:pluginId',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'JetBrains IntelliJ Plugins',
-        pattern: 'rating/:pluginId',
-        namedParams: {
-          pluginId: '11941-automatic-power-saver',
-        },
-        staticPreview: this.render({
-          rating: '4.5',
-          format: 'rating',
-        }),
+  static openApi = {
+    '/jetbrains/plugin/r/{format}/{pluginId}': {
+      get: {
+        summary: 'JetBrains Plugin Rating',
+        parameters: pathParams(
+          {
+            name: 'format',
+            example: 'rating',
+            schema: { type: 'string', enum: this.getEnum('format') },
+          },
+          {
+            name: 'pluginId',
+            example: '11941',
+          },
+        ),
       },
-      {
-        title: 'JetBrains IntelliJ Plugins',
-        pattern: 'stars/:pluginId',
-        namedParams: {
-          pluginId: '11941-automatic-power-saver',
-        },
-        staticPreview: this.render({
-          rating: '4.5',
-          format: 'stars',
-        }),
-      },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'rating' }
-  }
+  static defaultBadgeData = { label: 'rating' }
 
   static render({ rating, format }) {
     const message =
@@ -78,9 +71,42 @@ module.exports = class JetbrainsRating extends JetbrainsBase {
   }
 
   async handle({ format, pluginId }) {
-    const pluginData = await this.fetchPackageData({ pluginId, schema })
-    const pluginRating =
-      pluginData['plugin-repository'].category['idea-plugin'][0].rating
-    return this.constructor.render({ rating: pluginRating, format })
+    let rating
+    if (this.constructor._isLegacyPluginId(pluginId)) {
+      const intelliJPluginData = await this.fetchIntelliJPluginData({
+        pluginId,
+        schema: intelliJschema,
+      })
+      rating =
+        intelliJPluginData['plugin-repository'].category['idea-plugin'][0]
+          .rating
+    } else {
+      const jetbrainsPluginData = await this._requestJson({
+        schema: jetbrainsSchema,
+        url: `https://plugins.jetbrains.com/api/plugins/${this.constructor._cleanPluginId(
+          pluginId,
+        )}/rating`,
+        httpErrors: { 400: 'not found' },
+      })
+
+      let voteSum = 0
+      let voteCount = 0
+      const votes = jetbrainsPluginData.votes
+      Object.entries(votes).forEach(([rating, votes]) => {
+        voteSum += parseInt(rating) * votes
+        voteCount += votes
+      })
+      const meanRating = jetbrainsPluginData.meanRating
+
+      if (voteCount === 0) {
+        throw new NotFound({ prettyMessage: 'No Plugin Ratings' })
+      }
+
+      // JetBrains Plugin Rating Formula from:
+      // https://plugins.jetbrains.com/docs/marketplace/plugins-rating.html
+      rating = (voteSum + 2 * meanRating) / (voteCount + 2)
+    }
+
+    return this.constructor.render({ rating, format })
   }
 }

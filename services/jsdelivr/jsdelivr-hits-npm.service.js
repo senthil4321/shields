@@ -1,37 +1,51 @@
-'use strict'
+import { pathParams } from '../index.js'
+import { schema, periodMap, BaseJsDelivrService } from './jsdelivr-base.js'
 
-const { schema, periodMap, BaseJsDelivrService } = require('./jsdelivr-base')
-
-module.exports = class JsDelivrHitsNPM extends BaseJsDelivrService {
-  static get route() {
-    return {
-      base: 'jsdelivr/npm',
-      pattern: ':period(hd|hw|hm|hy)/:scope(@[^/]+)?/:packageName',
-    }
+export default class JsDelivrHitsNPM extends BaseJsDelivrService {
+  static route = {
+    base: 'jsdelivr/npm',
+    pattern: ':period(hd|hw|hm|hy)/:scope(@[^/]+)?/:packageName',
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'jsDelivr hits (npm)',
-        pattern: ':period(hd|hw|hm|hy)/:packageName',
-        namedParams: {
-          period: 'hm',
-          packageName: 'jquery',
-        },
-        staticPreview: this.render({ period: 'hm', hits: 920101789 }),
+  static openApi = {
+    '/jsdelivr/npm/{period}/{packageName}': {
+      get: {
+        summary: 'jsDelivr hits (npm)',
+        parameters: pathParams(
+          {
+            name: 'period',
+            schema: { type: 'string', enum: this.getEnum('period') },
+            example: 'hm',
+            description: 'Hits per Day, Week, Month or Year',
+          },
+          {
+            name: 'packageName',
+            example: 'fire',
+          },
+        ),
       },
-      {
-        title: 'jsDelivr hits (npm scoped)',
-        pattern: ':period(hd|hw|hm|hy)/:scope?/:packageName',
-        namedParams: {
-          period: 'hm',
-          scope: '@angular',
-          packageName: 'fire',
-        },
-        staticPreview: this.render({ period: 'hm', hits: 94123 }),
+    },
+    '/jsdelivr/npm/{period}/{scope}/{packageName}': {
+      get: {
+        summary: 'jsDelivr hits (npm scoped)',
+        parameters: pathParams(
+          {
+            name: 'period',
+            schema: { type: 'string', enum: this.getEnum('period') },
+            example: 'hm',
+            description: 'Hits per Day, Week, Month or Year',
+          },
+          {
+            name: 'scope',
+            example: '@angular',
+          },
+          {
+            name: 'packageName',
+            example: 'fire',
+          },
+        ),
       },
-    ]
+    },
   }
 
   async fetch({ period, packageName }) {

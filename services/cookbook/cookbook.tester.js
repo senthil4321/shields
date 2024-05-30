@@ -1,7 +1,6 @@
-'use strict'
-
-const { isVPlusDottedVersionAtLeastOne } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isVPlusDottedVersionAtLeastOne } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('version').get('/chef-sugar.json').expectBadge({
   label: 'cookbook',
@@ -15,7 +14,7 @@ t.create('version')
       .get('/api/v1/cookbooks/chef-sugar/versions/latest')
       .reply(200, {
         version: '4.1.0',
-      })
+      }),
   )
   .expectBadge({
     label: 'cookbook',

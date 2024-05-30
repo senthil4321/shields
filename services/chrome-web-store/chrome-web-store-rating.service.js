@@ -1,35 +1,30 @@
-'use strict'
-
-const { floorCount: floorCountColor } = require('../color-formatters')
-const { metric, starRating } = require('../text-formatters')
-const BaseChromeWebStoreService = require('./chrome-web-store-base')
+import { floorCount as floorCountColor } from '../color-formatters.js'
+import { metric, starRating } from '../text-formatters.js'
+import { NotFound, pathParams } from '../index.js'
+import BaseChromeWebStoreService from './chrome-web-store-base.js'
 
 class BaseChromeWebStoreRating extends BaseChromeWebStoreService {
-  static get category() {
-    return 'rating'
-  }
+  static category = 'rating'
 
-  static get defaultBadgeData() {
-    return { label: 'rating' }
-  }
+  static defaultBadgeData = { label: 'rating' }
 }
 
 class ChromeWebStoreRating extends BaseChromeWebStoreRating {
-  static get route() {
-    return {
-      base: 'chrome-web-store/rating',
-      pattern: ':storeId',
-    }
+  static route = {
+    base: 'chrome-web-store/rating',
+    pattern: ':storeId',
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'Chrome Web Store',
-        namedParams: { storeId: 'ogffaloegjglncjfehdfplabnoondfjo' },
-        staticPreview: this.render({ rating: '3.67' }),
+  static openApi = {
+    '/chrome-web-store/rating/{storeId}': {
+      get: {
+        summary: 'Chrome Web Store Rating',
+        parameters: pathParams({
+          name: 'storeId',
+          example: 'ogffaloegjglncjfehdfplabnoondfjo',
+        }),
       },
-    ]
+    },
   }
 
   static render({ rating }) {
@@ -41,27 +36,31 @@ class ChromeWebStoreRating extends BaseChromeWebStoreRating {
   }
 
   async handle({ storeId }) {
-    const { ratingValue } = await this.fetch({ storeId })
-    return this.constructor.render({ rating: ratingValue })
+    const chromeWebStore = await this.fetch({ storeId })
+    const rating = chromeWebStore.ratingValue()
+    if (rating == null) {
+      throw new NotFound({ prettyMessage: 'not found' })
+    }
+    return this.constructor.render({ rating })
   }
 }
 
 class ChromeWebStoreRatingCount extends BaseChromeWebStoreRating {
-  static get route() {
-    return {
-      base: 'chrome-web-store/rating-count',
-      pattern: ':storeId',
-    }
+  static route = {
+    base: 'chrome-web-store/rating-count',
+    pattern: ':storeId',
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'Chrome Web Store',
-        namedParams: { storeId: 'ogffaloegjglncjfehdfplabnoondfjo' },
-        staticPreview: this.render({ ratingCount: 12 }),
+  static openApi = {
+    '/chrome-web-store/rating-count/{storeId}': {
+      get: {
+        summary: 'Chrome Web Store Rating Count',
+        parameters: pathParams({
+          name: 'storeId',
+          example: 'ogffaloegjglncjfehdfplabnoondfjo',
+        }),
       },
-    ]
+    },
   }
 
   static render({ ratingCount }) {
@@ -72,27 +71,34 @@ class ChromeWebStoreRatingCount extends BaseChromeWebStoreRating {
   }
 
   async handle({ storeId }) {
-    const { ratingCount } = await this.fetch({ storeId })
+    const chromeWebStore = await this.fetch({
+      storeId,
+      property: 'ratingCount',
+    })
+    const ratingCount = chromeWebStore.ratingCount()
+    if (ratingCount == null) {
+      throw new NotFound({ prettyMessage: 'not found' })
+    }
     return this.constructor.render({ ratingCount })
   }
 }
 
 class ChromeWebStoreRatingStars extends BaseChromeWebStoreRating {
-  static get route() {
-    return {
-      base: 'chrome-web-store/stars',
-      pattern: ':storeId',
-    }
+  static route = {
+    base: 'chrome-web-store/stars',
+    pattern: ':storeId',
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'Chrome Web Store',
-        namedParams: { storeId: 'ogffaloegjglncjfehdfplabnoondfjo' },
-        staticPreview: this.render({ rating: '3.75' }),
+  static openApi = {
+    '/chrome-web-store/stars/{storeId}': {
+      get: {
+        summary: 'Chrome Web Store Stars',
+        parameters: pathParams({
+          name: 'storeId',
+          example: 'ogffaloegjglncjfehdfplabnoondfjo',
+        }),
       },
-    ]
+    },
   }
 
   static render({ rating }) {
@@ -103,12 +109,16 @@ class ChromeWebStoreRatingStars extends BaseChromeWebStoreRating {
   }
 
   async handle({ storeId }) {
-    const { ratingValue } = await this.fetch({ storeId })
-    return this.constructor.render({ rating: parseFloat(ratingValue) })
+    const chromeWebStore = await this.fetch({ storeId })
+    const rating = chromeWebStore.ratingValue()
+    if (rating == null) {
+      throw new NotFound({ prettyMessage: 'not found' })
+    }
+    return this.constructor.render({ rating })
   }
 }
 
-module.exports = {
+export {
   ChromeWebStoreRating,
   ChromeWebStoreRatingCount,
   ChromeWebStoreRatingStars,

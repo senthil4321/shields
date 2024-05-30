@@ -1,14 +1,13 @@
-'use strict'
-
-const { test, given, forCases } = require('sazerac')
-const { expect } = require('chai')
-const {
-  coveragePercentage,
-  colorScale,
-  letterScore,
+import { expect } from 'chai'
+import { forCases, given, test } from 'sazerac'
+import {
   age,
+  colorScale,
+  coveragePercentage,
+  letterScore,
+  pep440VersionColor,
   version,
-} = require('./color-formatters')
+} from './color-formatters.js'
 
 describe('Color formatters', function () {
   const byPercentage = colorScale([Number.EPSILON, 80, 90, 100])
@@ -27,8 +26,8 @@ describe('Color formatters', function () {
 
     forCases(
       [-1, 0, 0.5, 1, 50, 80, 85, 90, 100, 101].map(v =>
-        given(v).expect(coveragePercentage(v))
-      )
+        given(v).expect(coveragePercentage(v)),
+      ),
     ).should("return '%s', for parity with coveragePercentage()")
   })
 
@@ -76,6 +75,22 @@ describe('Color formatters', function () {
     given(monthsAgo(15))
       .describe('when given a Date 15 months ago')
       .expect('orange')
+    // --- reversed --- //
+    given(Date.now(), true)
+      .describe('when given the current timestamp and reversed')
+      .expect('red')
+    given(new Date(), true)
+      .describe('when given the current Date and reversed')
+      .expect('red')
+    given(new Date(2001, 1, 1), true)
+      .describe('when given a Date many years ago and reversed')
+      .expect('brightgreen')
+    given(monthsAgo(2), true)
+      .describe('when given a Date two months ago and reversed')
+      .expect('yellow')
+    given(monthsAgo(15), true)
+      .describe('when given a Date 15 months ago and reversed')
+      .expect('green')
   })
 
   test(version, () => {
@@ -89,23 +104,65 @@ describe('Color formatters', function () {
       given('6.0-SNAPSHOT'),
       given('1.0.1-dev'),
       given('2.1.6-prerelease'),
+      given('2.1.6-RC1'),
     ]).expect('orange')
 
     expect(() => version(null)).to.throw(
       Error,
-      "Can't generate a version color for null"
+      "Can't generate a version color for null",
     )
     expect(() => version(undefined)).to.throw(
       Error,
-      "Can't generate a version color for undefined"
+      "Can't generate a version color for undefined",
     )
     expect(() => version(true)).to.throw(
       Error,
-      "Can't generate a version color for true"
+      "Can't generate a version color for true",
     )
     expect(() => version({})).to.throw(
       Error,
-      "Can't generate a version color for [object Object]"
+      "Can't generate a version color for [object Object]",
     )
+  })
+
+  test(pep440VersionColor, () => {
+    forCases([
+      given('1.0.1'),
+      given('v2.1.6'),
+      given('1.0.1+abcd'),
+      given('1.0'),
+      given('v1'),
+      given(9),
+      given(1.0),
+    ]).expect('blue')
+
+    forCases([
+      given('1.0.1-rc1'),
+      given('1.0.1rc1'),
+      given('1.0.0-Beta'),
+      given('1.0.0Beta'),
+      given('1.1.0-alpha'),
+      given('1.1.0alpha'),
+      given('1.0.1-dev'),
+      given('1.0.1dev'),
+      given('2.1.6-b1'),
+      given('2.1.6b1'),
+      given('0.1.0'),
+      given('v0.1.0'),
+      given('v2.1.6-b1'),
+      given('0.1.0+abcd'),
+      given('2.1.6-b1+abcd'),
+      given('0.0.0'),
+      given(0.1),
+      given('0.9'),
+    ]).expect('orange')
+
+    forCases([
+      given('6.0.0-SNAPSHOT'),
+      given('2.1.6-prerelease'),
+      given(true),
+      given(null),
+      given('cheese'),
+    ]).expect('lightgrey')
   })
 })

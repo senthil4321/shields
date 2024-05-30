@@ -1,10 +1,8 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { metric } = require('../text-formatters')
-const { nonNegativeInteger } = require('../validators')
-const { downloadCount } = require('../color-formatters')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import { metric } from '../text-formatters.js'
+import { nonNegativeInteger } from '../validators.js'
+import { downloadCount } from '../color-formatters.js'
+import { BaseJsonService, pathParams } from '../index.js'
 
 const collectionSchema = Joi.object({
   payload: Joi.object({
@@ -12,32 +10,32 @@ const collectionSchema = Joi.object({
   }).required(),
 }).required()
 
-module.exports = class BitComponents extends BaseJsonService {
-  static get category() {
-    return 'other'
+export default class BitComponents extends BaseJsonService {
+  static category = 'other'
+  static route = {
+    base: 'bit/collection/total-components',
+    pattern: ':owner/:collection',
   }
 
-  static get route() {
-    return {
-      base: 'bit/collection/total-components',
-      pattern: ':owner/:collection',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'bit',
-        namedParams: { owner: 'ramda', collection: 'ramda' },
-        staticPreview: this.render({ count: 330 }),
-        keywords: ['components'],
+  static openApi = {
+    '/bit/collection/total-components/{owner}/{collection}': {
+      get: {
+        summary: 'Bit Components',
+        parameters: pathParams(
+          {
+            name: 'owner',
+            example: 'ramda',
+          },
+          {
+            name: 'collection',
+            example: 'ramda',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'components' }
-  }
+  static defaultBadgeData = { label: 'components' }
 
   static render({ count }) {
     return { message: metric(count), color: downloadCount(count) }
@@ -48,7 +46,7 @@ module.exports = class BitComponents extends BaseJsonService {
     return this._requestJson({
       url,
       schema: collectionSchema,
-      errorMessages: {
+      httpErrors: {
         404: 'collection not found',
       },
     })

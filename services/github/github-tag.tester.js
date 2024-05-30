@@ -1,14 +1,12 @@
-'use strict'
+import Joi from 'joi'
+import { isSemver } from '../test-validators.js'
+import { ServiceTester } from '../tester.js'
 
-const Joi = require('@hapi/joi')
-const { isSemver } = require('../test-validators')
-const { ServiceTester } = require('../tester')
-
-const t = (module.exports = new ServiceTester({
+export const t = new ServiceTester({
   id: 'GithubTag',
   title: 'Github Tag',
   pathPrefix: '/github',
-}))
+})
 
 t.create('Tag')
   .get('/v/tag/expressjs/express.json')
@@ -38,7 +36,7 @@ t.create('Tag (legacy route: tag)')
 t.create('Tag (legacy route: tag-pre)')
   .get('/tag-pre/photonstorm/phaser.svg')
   .expectRedirect(
-    '/github/v/tag/photonstorm/phaser.svg?include_prereleases&sort=semver'
+    '/github/v/tag/photonstorm/phaser.svg?include_prereleases&sort=semver',
   )
 
 t.create('Tag (legacy route: tag-date)')

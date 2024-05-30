@@ -1,4 +1,4 @@
-'use strict'
+import { createServiceTester } from '../tester.js'
 
 const getURL = '/3.0.json?specUrl=https://example.com/example.json'
 const getURLBase = '/3.0.json?specUrl='
@@ -7,8 +7,7 @@ const apiGetURL = '/validator/debug'
 const apiGetQueryParams = {
   url: 'https://example.com/example.json',
 }
-
-const t = (module.exports = require('../tester').createServiceTester())
+export const t = await createServiceTester()
 
 t.create('Invalid')
   .get(getURL)
@@ -23,7 +22,7 @@ t.create('Invalid')
             message: 'error',
           },
         ],
-      })
+      }),
   )
   .expectBadge({
     label: 'swagger',
@@ -33,7 +32,7 @@ t.create('Invalid')
 
 t.create('Valid json 2.0')
   .get(
-    `${getURLBase}https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/examples/v2.0/json/petstore-expanded.json`
+    `${getURLBase}https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/examples/v2.0/json/petstore-expanded.json`,
   )
   .expectBadge({
     label: 'swagger',
@@ -43,7 +42,7 @@ t.create('Valid json 2.0')
 
 t.create('Valid yaml 3.0')
   .get(
-    `${getURLBase}https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/examples/v3.0/petstore.yaml`
+    `${getURLBase}https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/examples/v3.0/petstore.yaml`,
   )
   .expectBadge({
     label: 'swagger',
@@ -62,7 +61,7 @@ t.create('Valid with warnings')
 // Isn't a spec, but valid json
 t.create('Invalid')
   .get(
-    `${getURLBase}https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/schemas/v3.0/schema.json`
+    `${getURLBase}https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/schemas/v3.0/schema.json`,
   )
   .expectBadge({
     label: 'swagger',
@@ -72,7 +71,7 @@ t.create('Invalid')
 
 t.create('Not found')
   .get(
-    `${getURLBase}https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/examples/v3.0/notFound.yaml`
+    `${getURLBase}https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/examples/v3.0/notFound.yaml`,
   )
   .expectBadge({
     label: 'swagger',

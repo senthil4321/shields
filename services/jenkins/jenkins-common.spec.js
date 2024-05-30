@@ -1,6 +1,5 @@
-'use strict'
-const { expect } = require('chai')
-const { buildRedirectUrl, buildUrl } = require('./jenkins-common')
+import { expect } from 'chai'
+import { buildRedirectUrl, buildUrl } from './jenkins-common.js'
 
 describe('jenkins-common', function () {
   describe('buildUrl', function () {
@@ -10,7 +9,7 @@ describe('jenkins-common', function () {
       })
 
       expect(actualResult).to.equal(
-        'https://ci.eclipse.org/jgit/job/jgit/lastCompletedBuild/api/json'
+        'https://ci.eclipse.org/jgit/job/jgit/lastCompletedBuild/api/json',
       )
     })
 
@@ -21,7 +20,7 @@ describe('jenkins-common', function () {
       })
 
       expect(actualResult).to.equal(
-        'https://ci.eclipse.org/jgit/job/jgit/lastCompletedBuild/cobertura/api/json'
+        'https://ci.eclipse.org/jgit/job/jgit/lastCompletedBuild/cobertura/api/json',
       )
     })
 
@@ -32,7 +31,7 @@ describe('jenkins-common', function () {
       })
 
       expect(actualResult).to.equal(
-        'https://ci.eclipse.org/jgit/job/jgit/api/json'
+        'https://ci.eclipse.org/jgit/job/jgit/api/json',
       )
     })
   })
@@ -46,7 +45,7 @@ describe('jenkins-common', function () {
       })
 
       expect(actualResult).to.equal(
-        'https://jenkins.sqlalchemy.org/job/alembic_coverage'
+        'https://jenkins.sqlalchemy.org/job/alembic_coverage',
       )
     })
 
@@ -58,7 +57,7 @@ describe('jenkins-common', function () {
       })
 
       expect(actualResult).to.equal(
-        'https://jenkins.sqlalchemy.org/job/alembic_coverage'
+        'https://jenkins.sqlalchemy.org/job/alembic_coverage',
       )
     })
   })

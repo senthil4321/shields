@@ -1,73 +1,55 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const t = (module.exports = require('../tester').createServiceTester())
+import Joi from 'joi'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('NodePing status')
   .get('/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei.json')
-  .expectBadge({
-    label: 'Status',
-    message: Joi.equal('up', 'down').required(),
-  })
+  .expectBadge({ label: 'status', message: Joi.equal('up', 'down').required() })
 
 t.create('NodePing status - up')
   .get('/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei.json')
   .intercept(nock =>
     nock('https://nodeping.com')
       .get(
-        '/reports/results/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei/1?format=json'
+        '/reports/results/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei/1?format=json',
       )
-      .reply(200, [{ su: true }])
+      .reply(200, [{ su: true }]),
   )
-  .expectBadge({
-    label: 'Status',
-    message: 'up',
-  })
+  .expectBadge({ label: 'status', message: 'up' })
 
 t.create('NodePing status - down')
   .get('/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei.json')
   .intercept(nock =>
     nock('https://nodeping.com')
       .get(
-        '/reports/results/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei/1?format=json'
+        '/reports/results/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei/1?format=json',
       )
-      .reply(200, [{ su: false }])
+      .reply(200, [{ su: false }]),
   )
-  .expectBadge({
-    label: 'Status',
-    message: 'down',
-  })
+  .expectBadge({ label: 'status', message: 'down' })
 
 t.create('NodePing status - custom up color/message')
   .get(
-    '/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei.json?up_color=blue&up_message=happy'
+    '/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei.json?up_color=blue&up_message=happy',
   )
   .intercept(nock =>
     nock('https://nodeping.com')
       .get(
-        '/reports/results/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei/1?format=json'
+        '/reports/results/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei/1?format=json',
       )
-      .reply(200, [{ su: true }])
+      .reply(200, [{ su: true }]),
   )
-  .expectBadge({
-    label: 'Status',
-    message: 'happy',
-    color: 'blue',
-  })
+  .expectBadge({ label: 'status', message: 'happy', color: 'blue' })
 
 t.create('NodePing status - custom down color/message')
   .get(
-    '/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei.json?down_color=yellow&down_message=sad'
+    '/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei.json?down_color=yellow&down_message=sad',
   )
   .intercept(nock =>
     nock('https://nodeping.com')
       .get(
-        '/reports/results/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei/1?format=json'
+        '/reports/results/jkiwn052-ntpp-4lbb-8d45-ihew6d9ucoei/1?format=json',
       )
-      .reply(200, [{ su: false }])
+      .reply(200, [{ su: false }]),
   )
-  .expectBadge({
-    label: 'Status',
-    message: 'sad',
-    color: 'yellow',
-  })
+  .expectBadge({ label: 'status', message: 'sad', color: 'yellow' })

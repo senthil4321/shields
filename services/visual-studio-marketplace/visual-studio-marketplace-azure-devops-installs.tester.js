@@ -1,7 +1,6 @@
-'use strict'
-
-const t = (module.exports = require('../tester').createServiceTester())
-const { isMetric } = require('../test-validators')
+import { createServiceTester } from '../tester.js'
+import { isMetric } from '../test-validators.js'
+export const t = await createServiceTester()
 
 const mockResponse = {
   results: [
@@ -23,6 +22,8 @@ const mockResponse = {
               version: '1.0.0',
             },
           ],
+          releaseDate: '2019-04-13T07:50:27.000Z',
+          lastUpdated: '2019-04-13T07:50:27.000Z',
         },
       ],
     },
@@ -61,8 +62,8 @@ t.create('total installs')
   .get('/total/swellaby.cobertura-transform.json')
   .intercept(nock =>
     nock('https://marketplace.visualstudio.com/_apis/public/gallery/')
-      .post(`/extensionquery/`)
-      .reply(200, mockResponse)
+      .post('/extensionquery/')
+      .reply(200, mockResponse),
   )
   .expectBadge({
     label: 'installs',
@@ -74,8 +75,8 @@ t.create('services installs')
   .get('/services/swellaby.cobertura-transform.json')
   .intercept(nock =>
     nock('https://marketplace.visualstudio.com/_apis/public/gallery/')
-      .post(`/extensionquery/`)
-      .reply(200, mockResponse)
+      .post('/extensionquery/')
+      .reply(200, mockResponse),
   )
   .expectBadge({
     label: 'installs',
@@ -87,8 +88,8 @@ t.create('onprem installs')
   .get('/onprem/swellaby.cobertura-transform.json')
   .intercept(nock =>
     nock('https://marketplace.visualstudio.com/_apis/public/gallery/')
-      .post(`/extensionquery/`)
-      .reply(200, mockResponse)
+      .post('/extensionquery/')
+      .reply(200, mockResponse),
   )
   .expectBadge({
     label: 'installs',
@@ -100,7 +101,7 @@ t.create('zero installs')
   .get('/total/swellaby.cobertura-transform.json')
   .intercept(nock =>
     nock('https://marketplace.visualstudio.com/_apis/public/gallery/')
-      .post(`/extensionquery/`)
+      .post('/extensionquery/')
       .reply(200, {
         results: [
           {
@@ -112,11 +113,13 @@ t.create('zero installs')
                     version: '1.0.0',
                   },
                 ],
+                releaseDate: '2019-04-13T07:50:27.000Z',
+                lastUpdated: '2019-04-13T07:50:27.000Z',
               },
             ],
           },
         ],
-      })
+      }),
   )
   .expectBadge({
     label: 'installs',

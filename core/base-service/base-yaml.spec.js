@@ -1,24 +1,15 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { expect } = require('chai')
-const sinon = require('sinon')
-const BaseYamlService = require('./base-yaml')
+import Joi from 'joi'
+import { expect } from 'chai'
+import sinon from 'sinon'
+import BaseYamlService from './base-yaml.js'
 
 const dummySchema = Joi.object({
   requiredString: Joi.string().required(),
 }).required()
 
 class DummyYamlService extends BaseYamlService {
-  static get category() {
-    return 'cat'
-  }
-
-  static get route() {
-    return {
-      base: 'foo',
-    }
-  }
+  static category = 'cat'
+  static route = { base: 'foo' }
 
   async handle() {
     const { requiredString } = await this._requestYaml({
@@ -47,51 +38,51 @@ foo: baz
 
 describe('BaseYamlService', function () {
   describe('Making requests', function () {
-    let sendAndCacheRequest
+    let requestFetcher
     beforeEach(function () {
-      sendAndCacheRequest = sinon.stub().returns(
+      requestFetcher = sinon.stub().returns(
         Promise.resolve({
           buffer: expectedYaml,
           res: { statusCode: 200 },
-        })
+        }),
       )
     })
 
-    it('invokes _sendAndCacheRequest', async function () {
+    it('invokes _requestFetcher', async function () {
       await DummyYamlService.invoke(
-        { sendAndCacheRequest },
-        { handleInternalErrors: false }
+        { requestFetcher },
+        { handleInternalErrors: false },
       )
 
-      expect(sendAndCacheRequest).to.have.been.calledOnceWith(
+      expect(requestFetcher).to.have.been.calledOnceWith(
         'http://example.com/foo.yaml',
         {
           headers: {
             Accept:
               'text/x-yaml, text/yaml, application/x-yaml, application/yaml, text/plain',
           },
-        }
+        },
       )
     })
 
-    it('forwards options to _sendAndCacheRequest', async function () {
+    it('forwards options to _requestFetcher', async function () {
       class WithOptions extends DummyYamlService {
         async handle() {
           const { requiredString } = await this._requestYaml({
             schema: dummySchema,
             url: 'http://example.com/foo.yaml',
-            options: { method: 'POST', qs: { queryParam: 123 } },
+            options: { method: 'POST', searchParams: { queryParam: 123 } },
           })
           return { message: requiredString }
         }
       }
 
       await WithOptions.invoke(
-        { sendAndCacheRequest },
-        { handleInternalErrors: false }
+        { requestFetcher },
+        { handleInternalErrors: false },
       )
 
-      expect(sendAndCacheRequest).to.have.been.calledOnceWith(
+      expect(requestFetcher).to.have.been.calledOnceWith(
         'http://example.com/foo.yaml',
         {
           headers: {
@@ -99,38 +90,38 @@ describe('BaseYamlService', function () {
               'text/x-yaml, text/yaml, application/x-yaml, application/yaml, text/plain',
           },
           method: 'POST',
-          qs: { queryParam: 123 },
-        }
+          searchParams: { queryParam: 123 },
+        },
       )
     })
   })
 
   describe('Making badges', function () {
     it('handles valid yaml responses', async function () {
-      const sendAndCacheRequest = async () => ({
+      const requestFetcher = async () => ({
         buffer: expectedYaml,
         res: { statusCode: 200 },
       })
       expect(
         await DummyYamlService.invoke(
-          { sendAndCacheRequest },
-          { handleInternalErrors: false }
-        )
+          { requestFetcher },
+          { handleInternalErrors: false },
+        ),
       ).to.deep.equal({
         message: 'some-string',
       })
     })
 
     it('handles yaml responses which do not match the schema', async function () {
-      const sendAndCacheRequest = async () => ({
+      const requestFetcher = async () => ({
         buffer: unexpectedYaml,
         res: { statusCode: 200 },
       })
       expect(
         await DummyYamlService.invoke(
-          { sendAndCacheRequest },
-          { handleInternalErrors: false }
-        )
+          { requestFetcher },
+          { handleInternalErrors: false },
+        ),
       ).to.deep.equal({
         isError: true,
         color: 'lightgray',
@@ -139,15 +130,15 @@ describe('BaseYamlService', function () {
     })
 
     it('handles unparseable yaml responses', async function () {
-      const sendAndCacheRequest = async () => ({
+      const requestFetcher = async () => ({
         buffer: invalidYaml,
         res: { statusCode: 200 },
       })
       expect(
         await DummyYamlService.invoke(
-          { sendAndCacheRequest },
-          { handleInternalErrors: false }
-        )
+          { requestFetcher },
+          { handleInternalErrors: false },
+        ),
       ).to.deep.equal({
         isError: true,
         color: 'lightgray',

@@ -1,21 +1,17 @@
-'use strict'
+import { BaseJsonService } from '../index.js'
 
-const { BaseJsonService } = require('..')
-
-module.exports = class TeamCityBase extends BaseJsonService {
-  static get auth() {
-    return {
-      userKey: 'teamcity_user',
-      passKey: 'teamcity_pass',
-      serviceKey: 'teamcity',
-    }
+export default class TeamCityBase extends BaseJsonService {
+  static auth = {
+    userKey: 'teamcity_user',
+    passKey: 'teamcity_pass',
+    serviceKey: 'teamcity',
   }
 
-  async fetch({ url, schema, qs = {}, errorMessages = {} }) {
+  async fetch({ url, schema, searchParams = {}, httpErrors = {} }) {
     // JetBrains API Auth Docs: https://confluence.jetbrains.com/display/TCD18/REST+API#RESTAPI-RESTAuthentication
-    const options = { qs }
+    const options = { searchParams }
     if (!this.authHelper.isConfigured) {
-      qs.guest = 1
+      searchParams.guest = 1
     }
 
     return this._requestJson(
@@ -23,8 +19,8 @@ module.exports = class TeamCityBase extends BaseJsonService {
         url,
         schema,
         options,
-        errorMessages: { 404: 'build not found', ...errorMessages },
-      })
+        httpErrors: { 404: 'build not found', ...httpErrors },
+      }),
     )
   }
 }

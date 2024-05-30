@@ -1,38 +1,29 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { renderVersionBadge } = require('../version')
-const { BaseJsonService, NotFound } = require('..')
+import Joi from 'joi'
+import { renderVersionBadge } from '../version.js'
+import { BaseJsonService, NotFound, pathParams } from '../index.js'
 
 const cdnjsSchema = Joi.object({
   // optional due to non-standard 'not found' condition
   version: Joi.string(),
 }).required()
 
-module.exports = class Cdnjs extends BaseJsonService {
-  static get category() {
-    return 'version'
-  }
+export default class Cdnjs extends BaseJsonService {
+  static category = 'version'
+  static route = { base: 'cdnjs/v', pattern: ':library' }
 
-  static get route() {
-    return {
-      base: 'cdnjs/v',
-      pattern: ':library',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        namedParams: { library: 'jquery' },
-        staticPreview: this.render({ version: '1.5.2' }),
+  static openApi = {
+    '/cdnjs/v/{library}': {
+      get: {
+        summary: 'Cdnjs',
+        parameters: pathParams({
+          name: 'library',
+          example: 'jquery',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'cdnjs' }
-  }
+  static defaultBadgeData = { label: 'cdnjs' }
 
   static render({ version }) {
     return renderVersionBadge({ version })

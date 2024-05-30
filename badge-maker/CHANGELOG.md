@@ -1,5 +1,32 @@
 # Changelog
 
+## 4.0.0 [WIP]
+
+- Drop compatibility with Node < 16
+
+## 3.3.1
+
+- Improve font measuring in for-the-badge and social styles
+- Make for-the-badge letter spacing more predictable
+
+## 3.3.0
+
+- Readability improvements: a dark font color is automatically used when the badge's background is too light. For example: ![](https://img.shields.io/badge/hello-world-white)
+- Better CSS color compliance: thanks to a switch from _is-css-color_ to _[css-color-converter](https://www.npmjs.com/package/css-color-converter)_, you can use a wider range of color formats from the latest CSS specification, for example `rgb(0 255 0)`
+- Less dependencies: _badge-maker_ no longer depends on _camelcase_
+
+## 3.2.0
+
+- Accessibility improvements: Help users of assistive technologies to read the badges when used inline
+
+## 3.1.0
+
+- Add TypeScript definitions
+
+## 3.0.1
+
+- Fix missing dependency
+
 ## 3.0.0
 
 ### Breaking Changes
@@ -248,7 +275,7 @@ badge.loadFont('/path/to/Verdana.ttf', err => {
     { text: ['build', 'passed'], colorscheme: 'green', template: 'flat' },
     (svg, err) => {
       // svg is a string containing your badge
-    }
+    },
   )
 })
 ```

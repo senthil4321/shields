@@ -1,12 +1,10 @@
-'use strict'
+import { ServiceTester } from '../tester.js'
+export const t = new ServiceTester({
+  id: 'AnsibleGalaxyContentQualityScore',
+  title: 'AnsibleGalaxyContentQualityScore',
+  pathPrefix: '/ansible/quality',
+})
 
-const { nonNegativeInteger } = require('../validators')
-const t = (module.exports = require('../tester').createServiceTester())
-
-t.create('quality score (valid)')
+t.create('quality score')
   .get('/432.json')
-  .expectBadge({ label: 'quality', message: nonNegativeInteger })
-
-t.create('quality score (not found)')
-  .get('/0101.json')
-  .expectBadge({ label: 'quality', message: 'no score available' })
+  .expectBadge({ label: 'quality', message: 'no longer available' })

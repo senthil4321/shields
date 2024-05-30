@@ -1,7 +1,10 @@
-'use strict'
-
-const SonarBase = require('./sonar-base')
-const { queryParamSchema, keywords, documentation } = require('./sonar-helpers')
+import { pathParam } from '../index.js'
+import SonarBase from './sonar-base.js'
+import {
+  queryParamSchema,
+  openApiQueryParams,
+  documentation,
+} from './sonar-helpers.js'
 
 const colorMap = {
   0: 'red',
@@ -12,46 +15,47 @@ const colorMap = {
   5: 'brightgreen',
 }
 
-module.exports = class SonarFortifyRating extends SonarBase {
-  static get category() {
-    return 'analysis'
+const description = `
+Note that the Fortify Security Rating badge will only work on Sonar instances that have the <a href='https://marketplace.microfocus.com/fortify/content/fortify-sonarqube-plugin'>Fortify SonarQube Plugin</a> installed.
+The badge is not available for projects analyzed on SonarCloud.io
+
+${documentation}
+`
+
+export default class SonarFortifyRating extends SonarBase {
+  static category = 'analysis'
+
+  static route = {
+    base: 'sonar/fortify-security-rating',
+    pattern: ':component/:branch*',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'sonar/fortify-security-rating',
-      pattern: ':component',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Sonar Fortify Security Rating',
-        namedParams: {
-          component: 'org.ow2.petals:petals-se-ase',
-        },
-        queryParams: {
-          server: 'http://sonar.petalslink.com',
-          sonarVersion: '4.2',
-        },
-        staticPreview: this.render({ rating: 4 }),
-        keywords,
-        documentation: `
-        <p>
-          Note that the Fortify Security Rating badge will only work on Sonar instances that have the <a href='https://marketplace.microfocus.com/fortify/content/fortify-sonarqube-plugin'>Fortify SonarQube Plugin</a> installed.
-          The badge is not available for projects analyzed on SonarCloud.io
-        </p>
-        ${documentation}
-      `,
+  static openApi = {
+    '/sonar/fortify-security-rating/{component}': {
+      get: {
+        summary: 'Sonar Fortify Security Rating',
+        description,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          ...openApiQueryParams,
+        ],
       },
-    ]
+    },
+    '/sonar/fortify-security-rating/{component}/{branch}': {
+      get: {
+        summary: 'Sonar Fortify Security Rating (branch)',
+        description,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          pathParam({ name: 'branch', example: 'master' }),
+          ...openApiQueryParams,
+        ],
+      },
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'fortify-security-rating' }
-  }
+  static defaultBadgeData = { label: 'fortify-security-rating' }
 
   static render({ rating }) {
     return {
@@ -60,11 +64,12 @@ module.exports = class SonarFortifyRating extends SonarBase {
     }
   }
 
-  async handle({ component }, { server, sonarVersion }) {
+  async handle({ component, branch }, { server, sonarVersion }) {
     const json = await this.fetch({
       sonarVersion,
       server,
       component,
+      branch,
       metricName: 'fortify-security-rating',
     })
 

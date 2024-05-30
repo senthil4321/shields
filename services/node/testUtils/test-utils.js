@@ -1,50 +1,57 @@
-'use strict'
-
-const fs = require('fs')
-const path = require('path')
-const moment = require('moment')
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import dayjs from 'dayjs'
 
 const dateFormat = 'YYYY-MM-DD'
 
 const templates = {
   packageJsonVersionsTemplate: fs.readFileSync(
-    path.join(__dirname, `packageJsonVersionsTemplate.json`),
-    'utf-8'
+    path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      'packageJsonVersionsTemplate.json',
+    ),
+    'utf-8',
   ),
   packageJsonTemplate: fs.readFileSync(
-    path.join(__dirname, `packageJsonTemplate.json`),
-    'utf-8'
+    path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      'packageJsonTemplate.json',
+    ),
+    'utf-8',
   ),
 }
 
 const getTemplate = template => JSON.parse(templates[template])
 
-const mockPackageData = ({ packageName, engines, scope, tag }) => nock => {
-  let packageJson
-  let urlPath
-  if (scope || tag) {
-    if (scope) {
-      urlPath = `/${scope}%2F${packageName}`
+const mockPackageData =
+  ({ packageName, engines, scope, tag }) =>
+  nock => {
+    let packageJson
+    let urlPath
+    if (scope || tag) {
+      if (scope) {
+        urlPath = `/${scope}%2F${packageName}`
+      } else {
+        urlPath = `/${packageName}`
+      }
+      packageJson = getTemplate('packageJsonVersionsTemplate')
+      packageJson['dist-tags'][tag || 'latest'] = '0.0.91'
+      packageJson.versions['0.0.91'].engines.node = engines
     } else {
-      urlPath = `/${packageName}`
+      urlPath = `/${packageName}/latest`
+      packageJson = getTemplate('packageJsonTemplate')
+      packageJson.engines.node = engines
     }
-    packageJson = getTemplate('packageJsonVersionsTemplate')
-    packageJson['dist-tags'][tag || 'latest'] = '0.0.91'
-    packageJson.versions['0.0.91'].engines.node = engines
-  } else {
-    urlPath = `/${packageName}/latest`
-    packageJson = getTemplate('packageJsonTemplate')
-    packageJson.engines.node = engines
+    return nock('https://registry.npmjs.org/')
+      .get(urlPath)
+      .reply(200, packageJson)
   }
-  return nock('https://registry.npmjs.org/')
-    .get(urlPath)
-    .reply(200, packageJson)
-}
 
 const mockCurrentSha = latestVersion => nock => {
   const latestSha = `node-v${latestVersion}.12.0-aix-ppc64.tar.gz`
   return nock('https://nodejs.org/dist/')
-    .get(`/latest/SHASUMS256.txt`)
+    .get('/latest/SHASUMS256.txt')
     .reply(200, latestSha)
 }
 
@@ -60,7 +67,7 @@ const mockVersionsSha = () => nock => {
 }
 
 const mockReleaseSchedule = () => nock => {
-  const currentDate = moment()
+  const currentDate = dayjs()
   const schedule = {
     'v0.10': {
       start: '2013-03-11',
@@ -139,13 +146,8 @@ const mockReleaseSchedule = () => nock => {
     },
   }
   return nock('https://raw.githubusercontent.com/')
-    .get(`/nodejs/Release/master/schedule.json`)
+    .get('/nodejs/Release/master/schedule.json')
     .reply(200, schedule)
 }
 
-module.exports = {
-  mockPackageData,
-  mockCurrentSha,
-  mockVersionsSha,
-  mockReleaseSchedule,
-}
+export { mockPackageData, mockCurrentSha, mockVersionsSha, mockReleaseSchedule }

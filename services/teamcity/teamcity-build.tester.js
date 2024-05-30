@@ -1,11 +1,11 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { withRegex } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import Joi from 'joi'
+import { withRegex } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 const buildStatusValues = Joi.equal('passing', 'failure', 'error').required()
-const buildStatusTextRegex = /^success|failure|error|tests( failed: \d+( \(\d+ new\))?)?(,)?( passed: \d+)?(,)?( ignored: \d+)?(,)?( muted: \d+)?/
+const buildStatusTextRegex =
+  /^success|failure|error|tests( failed: \d+( \(\d+ new\))?)?(,)?( passed: \d+)?(,)?( ignored: \d+)?(,)?( muted: \d+)?/
 
 t.create('unknown build')
   .get('/s/btabc.json?server=https://teamcity.jetbrains.com')
@@ -34,7 +34,7 @@ t.create('codebetter success build')
       .reply(200, {
         status: 'SUCCESS',
         statusText: 'Success',
-      })
+      }),
   )
   .expectBadge({
     label: 'build',
@@ -51,7 +51,7 @@ t.create('codebetter failure build')
       .reply(200, {
         status: 'FAILURE',
         statusText: 'Tests failed: 2',
-      })
+      }),
   )
   .expectBadge({
     label: 'build',
@@ -68,7 +68,7 @@ t.create('simple build status with passed build')
       .reply(200, {
         status: 'SUCCESS',
         statusText: 'Tests passed: 100',
-      })
+      }),
   )
   .expectBadge({
     label: 'build',
@@ -85,7 +85,7 @@ t.create('simple build status with failed build')
       .reply(200, {
         status: 'FAILURE',
         statusText: 'Tests failed: 10 (2 new)',
-      })
+      }),
   )
   .expectBadge({
     label: 'build',
@@ -102,7 +102,7 @@ t.create('full build status with passed build')
       .reply(200, {
         status: 'SUCCESS',
         statusText: 'Tests passed: 100, ignored: 3',
-      })
+      }),
   )
   .expectBadge({
     label: 'build',
@@ -119,7 +119,7 @@ t.create('full build status with failed build')
       .reply(200, {
         status: 'FAILURE',
         statusText: 'Tests failed: 10 (2 new), passed: 99',
-      })
+      }),
   )
   .expectBadge({
     label: 'build',
@@ -136,7 +136,7 @@ t.create('full build status with passed build chain')
       .reply(200, {
         status: 'SUCCESS',
         statusText: 'Build chain finished (success: 9)',
-      })
+      }),
   )
   .expectBadge({
     label: 'build',

@@ -1,15 +1,14 @@
-'use strict'
+import { createServiceTester } from '../tester.js'
+import { isValidGrade } from './codefactor-helpers.js'
+export const t = await createServiceTester()
 
-const t = (module.exports = require('../tester').createServiceTester())
-const { isValidGrade } = require('./codefactor-helpers')
-
-t.create('Grade').get('/github/google/guava.json').expectBadge({
+t.create('Grade').get('/github/microsoft/powertoys.json').expectBadge({
   label: 'code quality',
   message: isValidGrade,
 })
 
 t.create('Grade (branch)')
-  .get('/github/pallets/flask/master.json')
+  .get('/github/spring-projects/spring-boot/main.json')
   .expectBadge({
     label: 'code quality',
     message: isValidGrade,

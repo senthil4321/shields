@@ -1,32 +1,21 @@
-'use strict'
+import PypiBase, { pypiGeneralParams } from './pypi-base.js'
+import { parseClassifiers } from './pypi-helpers.js'
 
-const PypiBase = require('./pypi-base')
-const { parseClassifiers } = require('./pypi-helpers')
+export default class PypiImplementation extends PypiBase {
+  static category = 'platform-support'
 
-module.exports = class PypiImplementation extends PypiBase {
-  static get category() {
-    return 'platform-support'
-  }
+  static route = this.buildRoute('pypi/implementation')
 
-  static get route() {
-    return this.buildRoute('pypi/implementation')
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'PyPI - Implementation',
-        pattern: ':packageName',
-        namedParams: { packageName: 'Django' },
-        staticPreview: this.render({ implementations: ['cpython'] }),
-        keywords: ['python'],
+  static openApi = {
+    '/pypi/implementation/{packageName}': {
+      get: {
+        summary: 'PyPI - Implementation',
+        parameters: pypiGeneralParams,
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'implementation' }
-  }
+  static defaultBadgeData = { label: 'implementation' }
 
   static render({ implementations }) {
     return {
@@ -35,12 +24,12 @@ module.exports = class PypiImplementation extends PypiBase {
     }
   }
 
-  async handle({ egg }) {
-    const packageData = await this.fetch({ egg })
+  async handle({ egg }, { pypiBaseUrl }) {
+    const packageData = await this.fetch({ egg, pypiBaseUrl })
 
     let implementations = parseClassifiers(
       packageData,
-      /^Programming Language :: Python :: Implementation :: (\S+)$/
+      /^Programming Language :: Python :: Implementation :: (\S+)$/,
     )
     if (implementations.length === 0) {
       // Assume CPython.

@@ -1,51 +1,42 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const TwitchBase = require('./twitch-base')
+import Joi from 'joi'
+import { pathParams } from '../index.js'
+import TwitchBase from './twitch-base.js'
 
 const helixSchema = Joi.object({
   data: Joi.array().required(),
 })
 
-module.exports = class TwitchStatus extends TwitchBase {
-  static get category() {
-    return 'activity'
+export default class TwitchStatus extends TwitchBase {
+  static category = 'social'
+
+  static route = {
+    base: 'twitch/status',
+    pattern: ':user',
   }
 
-  static get route() {
-    return {
-      base: 'twitch/status',
-      pattern: ':user',
-    }
-  }
-
-  static get examples() {
-    const preview = this.render({
-      user: 'andyonthewings',
-      isLive: true,
-    })
-    // link[] is not allowed in examples
-    delete preview.link
-    return [
-      {
-        title: 'Twitch Status',
-        namedParams: {
-          user: 'andyonthewings',
-        },
-        staticPreview: preview,
+  static openApi = {
+    '/twitch/status/{user}': {
+      get: {
+        summary: 'Twitch Status',
+        parameters: pathParams({
+          name: 'user',
+          example: 'andyonthewings',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'twitch',
-    }
+  static _cacheLength = 30
+
+  static defaultBadgeData = {
+    label: 'twitch',
+    namedLogo: 'twitch',
   }
 
   static render({ user, isLive }) {
     return {
       message: isLive ? 'live' : 'offline',
+      style: 'social',
       color: isLive ? 'red' : 'lightgrey',
       link: `https://www.twitch.tv/${user}`,
     }
@@ -59,9 +50,9 @@ module.exports = class TwitchStatus extends TwitchBase {
     // which we consider not worth it.
     const streams = this._requestJson({
       schema: helixSchema,
-      url: `https://api.twitch.tv/helix/streams`,
+      url: 'https://api.twitch.tv/helix/streams',
       options: {
-        qs: { user_login: user },
+        searchParams: { user_login: user },
       },
     })
 

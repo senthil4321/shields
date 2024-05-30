@@ -1,60 +1,57 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { metric } = require('../text-formatters')
-const { GithubAuthV3Service } = require('./github-auth-service')
-const { documentation, errorMessagesFor } = require('./github-helpers')
+import Joi from 'joi'
+import { pathParams } from '../index.js'
+import { metric } from '../text-formatters.js'
+import { GithubAuthV3Service } from './github-auth-service.js'
+import { documentation, httpErrorsFor } from './github-helpers.js'
 
 const schema = Joi.array()
   .items(
     Joi.object({
       state: Joi.string().required(),
-    })
+    }),
   )
   .required()
 
-module.exports = class GithubMilestone extends GithubAuthV3Service {
-  static get category() {
-    return 'issue-tracking'
+export default class GithubMilestone extends GithubAuthV3Service {
+  static category = 'issue-tracking'
+  static route = {
+    base: 'github/milestones',
+    pattern: ':variant(open|closed|all)/:user/:repo',
   }
 
-  static get route() {
-    return {
-      base: 'github/milestones',
-      pattern: ':variant(open|closed|all)/:user/:repo',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'GitHub milestones',
-        namedParams: {
-          user: 'badges',
-          repo: 'shields',
-          variant: 'open',
-        },
-        staticPreview: {
-          label: 'milestones',
-          message: '2',
-          color: 'red',
-        },
-        documentation,
+  static openApi = {
+    '/github/milestones/{variant}/{user}/{repo}': {
+      get: {
+        summary: 'GitHub number of milestones',
+        description: documentation,
+        parameters: pathParams(
+          {
+            name: 'variant',
+            example: 'open',
+            schema: { type: 'string', enum: this.getEnum('variant') },
+          },
+          {
+            name: 'user',
+            example: 'badges',
+          },
+          {
+            name: 'repo',
+            example: 'shields',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'milestones',
-      color: 'informational',
-    }
+  static defaultBadgeData = {
+    label: 'milestones',
+    color: 'informational',
   }
 
   static render({ user, repo, variant, milestones }) {
     const milestoneLength = milestones.length
     let color
-    let label = ''
+    let qualifier = ''
 
     switch (variant) {
       case 'all':
@@ -62,19 +59,18 @@ module.exports = class GithubMilestone extends GithubAuthV3Service {
         break
       case 'open':
         color = 'red'
-        label = 'active'
+        qualifier = 'active'
         break
       case 'closed':
         color = 'green'
-        label = 'completed'
+        qualifier = 'completed'
         break
     }
 
     return {
-      label: `${label} milestones`,
+      label: `${qualifier}${qualifier ? ' ' : ''}milestones`,
       message: metric(milestoneLength),
       color,
-      link: [`https://github.com/${user}/${repo}/milestones`],
     }
   }
 
@@ -82,7 +78,7 @@ module.exports = class GithubMilestone extends GithubAuthV3Service {
     return this._requestJson({
       url: `/repos/${user}/${repo}/milestones?state=${variant}`,
       schema,
-      errorMessages: errorMessagesFor(`repo not found`),
+      httpErrors: httpErrorsFor('repo not found'),
     })
   }
 

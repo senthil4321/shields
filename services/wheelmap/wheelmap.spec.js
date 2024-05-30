@@ -1,9 +1,7 @@
-'use strict'
-
-const { expect } = require('chai')
-const nock = require('nock')
-const { cleanUpNockAfterEach, defaultContext } = require('../test-helpers')
-const Wheelmap = require('./wheelmap.service')
+import { expect } from 'chai'
+import nock from 'nock'
+import { cleanUpNockAfterEach, defaultContext } from '../test-helpers.js'
+import Wheelmap from './wheelmap.service.js'
 
 describe('Wheelmap', function () {
   cleanUpNockAfterEach()
@@ -27,7 +25,7 @@ describe('Wheelmap', function () {
     const nodeId = '26699541'
     const scope = createMock({ nodeId, wheelchair: 'yes' })
     expect(
-      await Wheelmap.invoke(defaultContext, config, { nodeId })
+      await Wheelmap.invoke(defaultContext, config, { nodeId }),
     ).to.deep.equal({ message: 'yes', color: 'brightgreen' })
     scope.done()
   })
@@ -36,7 +34,7 @@ describe('Wheelmap', function () {
     const nodeId = '2034868974'
     const scope = createMock({ nodeId, wheelchair: 'limited' })
     expect(
-      await Wheelmap.invoke(defaultContext, config, { nodeId })
+      await Wheelmap.invoke(defaultContext, config, { nodeId }),
     ).to.deep.equal({ message: 'limited', color: 'yellow' })
     scope.done()
   })
@@ -45,7 +43,7 @@ describe('Wheelmap', function () {
     const nodeId = '-147495158'
     const scope = createMock({ nodeId, wheelchair: 'no' })
     expect(
-      await Wheelmap.invoke(defaultContext, config, { nodeId })
+      await Wheelmap.invoke(defaultContext, config, { nodeId }),
     ).to.deep.equal({ message: 'no', color: 'red' })
     scope.done()
   })
@@ -54,7 +52,7 @@ describe('Wheelmap', function () {
     const nodeId = '0'
     const scope = createMock({ nodeId })
     expect(
-      await Wheelmap.invoke(defaultContext, config, { nodeId })
+      await Wheelmap.invoke(defaultContext, config, { nodeId }),
     ).to.deep.equal({ message: 'node not found', color: 'red', isError: true })
     scope.done()
   })

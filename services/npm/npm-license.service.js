@@ -1,36 +1,30 @@
-'use strict'
+import { pathParam, queryParam } from '../index.js'
+import { renderLicenseBadge } from '../licenses.js'
+import toArray from '../../core/base-service/to-array.js'
+import NpmBase, { packageNameDescription } from './npm-base.js'
 
-const { renderLicenseBadge } = require('../licenses')
-const toArray = require('../../core/base-service/to-array')
-const NpmBase = require('./npm-base')
+export default class NpmLicense extends NpmBase {
+  static category = 'license'
 
-module.exports = class NpmLicense extends NpmBase {
-  static get category() {
-    return 'license'
-  }
+  static route = this.buildRoute('npm/l', { withTag: false })
 
-  static get route() {
-    return this.buildRoute('npm/l', { withTag: false })
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'NPM',
-        pattern: ':packageName',
-        namedParams: { packageName: 'express' },
-        staticPreview: this.render({ licenses: ['MIT'] }),
-        keywords: ['node'],
+  static openApi = {
+    '/npm/l/{packageName}': {
+      get: {
+        summary: 'NPM License',
+        parameters: [
+          pathParam({
+            name: 'packageName',
+            example: 'express',
+            description: packageNameDescription,
+          }),
+          queryParam({
+            name: 'registry_uri',
+            example: 'https://registry.npmjs.com',
+          }),
+        ],
       },
-      {
-        title: 'NPM',
-        pattern: ':packageName',
-        namedParams: { packageName: 'express' },
-        queryParams: { registry_uri: 'https://registry.npmjs.com' },
-        staticPreview: this.render({ licenses: ['MIT'] }),
-        keywords: ['node'],
-      },
-    ]
+    },
   }
 
   static render({ licenses }) {
@@ -40,7 +34,7 @@ module.exports = class NpmLicense extends NpmBase {
   async handle(namedParams, queryParams) {
     const { scope, packageName, registryUrl } = this.constructor.unpackParams(
       namedParams,
-      queryParams
+      queryParams,
     )
     const { license } = await this.fetchPackageData({
       scope,
@@ -48,7 +42,7 @@ module.exports = class NpmLicense extends NpmBase {
       registryUrl,
     })
     const licenses = toArray(license).map(license =>
-      typeof license === 'string' ? license : license.type
+      typeof license === 'string' ? license : license.type,
     )
     return this.constructor.render({ licenses })
   }

@@ -1,18 +1,17 @@
-'use strict'
+import { isFileSize } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
-const { isFileSize } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
-
-t.create('EssentialsX (id 9089)')
-  .get('/9089.json')
+t.create('EssentialsX (hosted resource)')
+  .get('/771.json')
   .expectBadge({ label: 'size', message: isFileSize })
 
-t.create('Advanced Achievements (id 6239)').get('/6239.json').expectBadge({
-  lavel: 'size',
+t.create('external resource').get('/9089.json').expectBadge({
+  label: 'size',
   message: 'resource hosted externally',
 })
 
-t.create('Invalid Resource (id 1)').get('/1.json').expectBadge({
+t.create('Invalid Resource').get('/1.json').expectBadge({
   label: 'size',
   message: 'not found',
 })

@@ -1,10 +1,8 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { colorScale, letterScore } = require('../color-formatters')
-const { nonNegativeInteger } = require('../validators')
-const { BaseJsonService, NotFound } = require('..')
-const { keywords, isLetterGrade, fetchRepo } = require('./codeclimate-common')
+import Joi from 'joi'
+import { colorScale, letterScore } from '../color-formatters.js'
+import { nonNegativeInteger } from '../validators.js'
+import { BaseJsonService, NotFound, pathParams } from '../index.js'
+import { isLetterGrade, fetchRepo } from './codeclimate-common.js'
 
 const schema = Joi.object({
   data: Joi.object({
@@ -19,7 +17,7 @@ const schema = Joi.object({
             measure: Joi.object({
               value: Joi.number().required(),
             }).required(),
-          })
+          }),
         )
         .length(1)
         .required(),
@@ -29,15 +27,15 @@ const schema = Joi.object({
 
 const maintainabilityColorScale = colorScale(
   [50, 80, 90, 95],
-  ['red', 'yellow', 'yellowgreen', 'green', 'brightgreen']
+  ['red', 'yellow', 'yellowgreen', 'green', 'brightgreen'],
 )
 const techDebtColorScale = colorScale(
   [5, 10, 20, 50],
-  ['brightgreen', 'green', 'yellowgreen', 'yellow', 'red']
+  ['brightgreen', 'green', 'yellowgreen', 'yellow', 'red'],
 )
 const issueColorScale = colorScale(
   [1, 5, 10, 20],
-  ['brightgreen', 'green', 'yellowgreen', 'yellow', 'red']
+  ['brightgreen', 'green', 'yellowgreen', 'yellow', 'red'],
 )
 
 const variantMap = {
@@ -87,57 +85,50 @@ const variantMap = {
   },
 }
 
-module.exports = class CodeclimateAnalysis extends BaseJsonService {
-  static get category() {
-    return 'analysis'
+export default class CodeclimateAnalysis extends BaseJsonService {
+  static category = 'analysis'
+  static route = {
+    base: 'codeclimate',
+    pattern:
+      ':variant(maintainability|maintainability-percentage|tech-debt|issues)/:user/:repo',
   }
 
-  static get route() {
-    return {
-      base: 'codeclimate',
-      pattern:
-        ':variant(maintainability|maintainability-percentage|tech-debt|issues)/:user/:repo',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Code Climate maintainability',
-        pattern:
-          ':format(maintainability|maintainability-percentage)/:user/:repo',
-        namedParams: {
-          format: 'maintainability',
-          user: 'angular',
-          repo: 'angular',
-        },
-        staticPreview: this.render({
-          variant: 'maintainability',
-          maintainabilityLetter: 'F',
-        }),
-        keywords,
+  static openApi = {
+    '/codeclimate/{variant}/{user}/{repo}': {
+      get: {
+        summary: 'Code Climate maintainability',
+        parameters: pathParams(
+          {
+            name: 'variant',
+            example: 'maintainability',
+            schema: {
+              type: 'string',
+              enum: ['maintainability', 'maintainability-percentage'],
+            },
+          },
+          { name: 'user', example: 'tensorflow' },
+          { name: 'repo', example: 'models' },
+        ),
       },
-      {
-        title: 'Code Climate issues',
-        pattern: 'issues/:user/:repo',
-        namedParams: { user: 'twbs', repo: 'bootstrap' },
-        staticPreview: this.render({
-          variant: 'issues',
-          issueCount: '89',
-        }),
-        keywords,
+    },
+    '/codeclimate/tech-debt/{user}/{repo}': {
+      get: {
+        summary: 'Code Climate issues',
+        parameters: pathParams(
+          { name: 'user', example: 'tensorflow' },
+          { name: 'repo', example: 'models' },
+        ),
       },
-      {
-        title: 'Code Climate technical debt',
-        pattern: 'tech-debt/:user/:repo',
-        namedParams: { user: 'angular', repo: 'angular' },
-        staticPreview: this.render({
-          variant: 'tech-debt',
-          techDebtPercentage: 3.0,
-        }),
-        keywords,
+    },
+    '/codeclimate/issues/{user}/{repo}': {
+      get: {
+        summary: 'Code Climate technical debt',
+        parameters: pathParams(
+          { name: 'user', example: 'tensorflow' },
+          { name: 'repo', example: 'models' },
+        ),
       },
-    ]
+    },
   }
 
   static render({ variant, ...props }) {
@@ -147,15 +138,19 @@ module.exports = class CodeclimateAnalysis extends BaseJsonService {
   }
 
   async fetch({ user, repo }) {
+    const repoInfos = await fetchRepo(this, { user, repo })
+    const repoInfosWithSnapshot = repoInfos.filter(
+      repoInfo => repoInfo.relationships.latest_default_branch_snapshot.data,
+    )
+    if (repoInfosWithSnapshot.length === 0) {
+      throw new NotFound({ prettyMessage: 'snapshot not found' })
+    }
     const {
       id: repoId,
       relationships: {
         latest_default_branch_snapshot: { data: snapshotInfo },
       },
-    } = await fetchRepo(this, { user, repo })
-    if (snapshotInfo === null) {
-      throw new NotFound({ prettyMessage: 'snapshot not found' })
-    }
+    } = repoInfosWithSnapshot[0]
     const { data } = await this._requestJson({
       schema,
       url: `https://api.codeclimate.com/v1/repos/${repoId}/snapshots/${snapshotInfo.id}`,

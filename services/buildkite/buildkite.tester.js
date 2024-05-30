@@ -1,8 +1,7 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { isBuildStatus } = require('../build-status')
-const t = (module.exports = require('../tester').createServiceTester())
+import Joi from 'joi'
+import { isBuildStatus } from '../build-status.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('buildkite invalid pipeline')
   .get('/unknown-identifier/unknown-branch.json')
@@ -24,6 +23,6 @@ t.create('buildkite valid pipeline skipping branch')
 
 t.create('buildkite unknown branch')
   .get(
-    '/3826789cf8890b426057e6fe1c4e683bdf04fa24d498885489/unknown-branch.json'
+    '/3826789cf8890b426057e6fe1c4e683bdf04fa24d498885489/unknown-branch.json',
   )
   .expectBadge({ label: 'build', message: 'unknown' })

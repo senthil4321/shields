@@ -1,17 +1,18 @@
-'use strict'
+import { createServiceTester } from '../tester.js'
+import { codacyGrade } from './codacy-helpers.js'
+export const t = await createServiceTester()
 
-const t = (module.exports = require('../tester').createServiceTester())
-const { codacyGrade } = require('./codacy-helpers')
-
+// https://app.codacy.com/gh/NicolasCARPi/jquery_jeditable/dashboard
+// https://github.com/NicolasCARPi/jquery_jeditable
 t.create('Code quality')
-  .get('/e27821fb6289410b8f58338c7e0bc686.json')
+  .get('/0cb32ce695b743d68257021455330c66.json')
   .expectBadge({
     label: 'code quality',
     message: codacyGrade,
   })
 
 t.create('Code quality on branch')
-  .get('/e27821fb6289410b8f58338c7e0bc686/master.json')
+  .get('/0cb32ce695b743d68257021455330c66/master.json')
   .expectBadge({
     label: 'code quality',
     message: codacyGrade,

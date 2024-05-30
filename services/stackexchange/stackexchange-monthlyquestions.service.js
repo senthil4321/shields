@@ -1,44 +1,38 @@
-'use strict'
-
-const moment = require('moment')
-const Joi = require('@hapi/joi')
-const { nonNegativeInteger } = require('../validators')
-const { BaseJsonService } = require('..')
-const renderQuestionsBadge = require('./stackexchange-helpers')
+import dayjs from 'dayjs'
+import Joi from 'joi'
+import { pathParams } from '../index.js'
+import { nonNegativeInteger } from '../validators.js'
+import {
+  renderQuestionsBadge,
+  StackExchangeBase,
+} from './stackexchange-base.js'
 
 const tagSchema = Joi.object({
   total: nonNegativeInteger,
 }).required()
 
-module.exports = class StackExchangeMonthlyQuestions extends BaseJsonService {
-  static get category() {
-    return 'chat'
+export default class StackExchangeMonthlyQuestions extends StackExchangeBase {
+  static route = {
+    base: 'stackexchange',
+    pattern: ':stackexchangesite/qm/:query',
   }
 
-  static get route() {
-    return {
-      base: 'stackexchange',
-      pattern: ':stackexchangesite/qm/:query',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Stack Exchange monthly questions',
-        namedParams: { stackexchangesite: 'stackoverflow', query: 'momentjs' },
-        staticPreview: this.render({
-          stackexchangesite: 'stackoverflow',
-          query: 'momentjs',
-          numValue: 2000,
-        }),
-        keywords: ['stackexchange', 'stackoverflow'],
+  static openApi = {
+    '/stackexchange/{stackexchangesite}/qm/{query}': {
+      get: {
+        summary: 'Stack Exchange monthly questions',
+        parameters: pathParams(
+          {
+            name: 'stackexchangesite',
+            example: 'stackoverflow',
+          },
+          {
+            name: 'query',
+            example: 'dayjs',
+          },
+        ),
       },
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return { label: 'stackoverflow' }
+    },
   }
 
   static render(props) {
@@ -49,21 +43,21 @@ module.exports = class StackExchangeMonthlyQuestions extends BaseJsonService {
   }
 
   async handle({ stackexchangesite, query }) {
-    const today = moment().toDate()
-    const prevMonthStart = moment(today)
+    const today = dayjs().toDate()
+    const prevMonthStart = dayjs(today)
       .subtract(1, 'months')
       .startOf('month')
       .unix()
-    const prevMonthEnd = moment(today)
+    const prevMonthEnd = dayjs(today)
       .subtract(1, 'months')
       .endOf('month')
       .unix()
 
-    const parsedData = await this._requestJson({
+    const parsedData = await this.fetch({
       schema: tagSchema,
       options: {
-        gzip: true,
-        qs: {
+        decompress: true,
+        searchParams: {
           site: stackexchangesite,
           fromdate: prevMonthStart,
           todate: prevMonthEnd,
@@ -71,7 +65,7 @@ module.exports = class StackExchangeMonthlyQuestions extends BaseJsonService {
           tagged: query,
         },
       },
-      url: `https://api.stackexchange.com/2.2/questions`,
+      url: 'https://api.stackexchange.com/2.2/questions',
     })
 
     const numValue = parsedData.total

@@ -1,13 +1,10 @@
-'use strict'
+import { ServiceTester } from '../tester.js'
+import { isMetric, isMetricOverTimePeriod } from '../test-validators.js'
 
-const { ServiceTester } = require('../tester')
-const { isMetric, isMetricOverTimePeriod } = require('../test-validators')
-
-const t = new ServiceTester({
+export const t = new ServiceTester({
   id: 'wordpress',
   title: 'WordPress Download Tests',
 })
-module.exports = t
 
 t.create('Plugin Downloads - Total')
   .get('/plugin/dt/akismet.json')
@@ -101,34 +98,6 @@ t.create('Plugin Downloads - Active | Not Found')
     message: 'not found',
   })
 
-t.create('Plugin Downloads - Day | Not Found')
-  .get('/plugin/dd/100.json')
-  .expectBadge({
-    label: 'downloads',
-    message: 'plugin not found or too new',
-  })
-
-t.create('Plugin Downloads - Week | Not Found')
-  .get('/plugin/dw/100.json')
-  .expectBadge({
-    label: 'downloads',
-    message: 'plugin not found or too new',
-  })
-
-t.create('Plugin Downloads - Month | Not Found')
-  .get('/plugin/dm/100.json')
-  .expectBadge({
-    label: 'downloads',
-    message: 'plugin not found or too new',
-  })
-
-t.create('Plugin Downloads - Year | Not Found')
-  .get('/plugin/dy/100.json')
-  .expectBadge({
-    label: 'downloads',
-    message: 'plugin not found or too new',
-  })
-
 t.create('Theme Downloads - Total | Not Found')
   .get('/theme/dt/100.json')
   .expectBadge({
@@ -141,32 +110,4 @@ t.create('Theme Downloads - Active | Not Found')
   .expectBadge({
     label: 'active installs',
     message: 'not found',
-  })
-
-t.create('Theme Downloads - Day | Not Found')
-  .get('/theme/dd/100.json')
-  .expectBadge({
-    label: 'downloads',
-    message: 'theme not found or too new',
-  })
-
-t.create('Theme Downloads - Week | Not Found')
-  .get('/theme/dw/100.json')
-  .expectBadge({
-    label: 'downloads',
-    message: 'theme not found or too new',
-  })
-
-t.create('Theme Downloads - Month | Not Found')
-  .get('/theme/dm/100.json')
-  .expectBadge({
-    label: 'downloads',
-    message: 'theme not found or too new',
-  })
-
-t.create('Theme Downloads - Year | Not Found')
-  .get('/theme/dy/100.json')
-  .expectBadge({
-    label: 'downloads',
-    message: 'theme not found or too new',
   })

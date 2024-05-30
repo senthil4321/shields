@@ -1,59 +1,62 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { metric } = require('../text-formatters')
-const { nonNegativeInteger } = require('../validators')
-const { BaseJsonService } = require('..')
-const {
+import Joi from 'joi'
+import { renderDownloadsBadge } from '../downloads.js'
+import { nonNegativeInteger } from '../validators.js'
+import { BaseJsonService, pathParams } from '../index.js'
+import {
   dockerBlue,
   buildDockerUrl,
   getDockerHubUser,
-} = require('./docker-helpers')
+} from './docker-helpers.js'
+import { fetch } from './docker-hub-common-fetch.js'
 
 const pullsSchema = Joi.object({
   pull_count: nonNegativeInteger,
 }).required()
 
-module.exports = class DockerPulls extends BaseJsonService {
-  static get category() {
-    return 'downloads'
+export default class DockerPulls extends BaseJsonService {
+  static category = 'downloads'
+  static route = buildDockerUrl('pulls')
+
+  static auth = {
+    userKey: 'dockerhub_username',
+    passKey: 'dockerhub_pat',
+    authorizedOrigins: ['https://hub.docker.com'],
+    isRequired: false,
   }
 
-  static get route() {
-    return buildDockerUrl('pulls')
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Docker Pulls',
-        namedParams: {
-          user: '_',
-          repo: 'ubuntu',
-        },
-        staticPreview: this.render({ count: 765400000 }),
+  static openApi = {
+    '/docker/pulls/{user}/{repo}': {
+      get: {
+        summary: 'Docker Pulls',
+        parameters: pathParams(
+          {
+            name: 'user',
+            example: '_',
+          },
+          {
+            name: 'repo',
+            example: 'ubuntu',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'docker pulls' }
-  }
+  static _cacheLength = 14400
 
-  static render({ count }) {
-    return {
-      message: metric(count),
-      color: dockerBlue,
-    }
+  static defaultBadgeData = { label: 'docker pulls' }
+
+  static render({ count: downloads }) {
+    return renderDownloadsBadge({ downloads, colorOverride: dockerBlue })
   }
 
   async fetch({ user, repo }) {
-    return this._requestJson({
+    return await fetch(this, {
       schema: pullsSchema,
       url: `https://hub.docker.com/v2/repositories/${getDockerHubUser(
-        user
+        user,
       )}/${repo}`,
-      errorMessages: { 404: 'repo not found' },
+      httpErrors: { 404: 'repo not found' },
     })
   }
 

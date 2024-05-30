@@ -1,6 +1,4 @@
-'use strict'
-
 class BadBaseService {}
-class BadService extends BadBaseService {}
+class BadChildService extends BadBaseService {}
 
-module.exports = BadService
+export default BadChildService

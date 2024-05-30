@@ -1,14 +1,8 @@
-'use strict'
-
-const path = require('path')
-const { AuthHelper } = require('../../core/base-service/auth-helper')
-const RedisTokenPersistence = require('../../core/token-pooling/redis-token-persistence')
-const FsTokenPersistence = require('../../core/token-pooling/fs-token-persistence')
-const serverSecrets = require('../../lib/server-secrets')
-const log = require('../../core/server/log')
-const GithubApiProvider = require('./github-api-provider')
-const { setRoutes: setAdminRoutes } = require('./auth/admin')
-const { setRoutes: setAcceptorRoutes } = require('./auth/acceptor')
+import { AuthHelper } from '../../core/base-service/auth-helper.js'
+import SqlTokenPersistence from '../../core/token-pooling/sql-token-persistence.js'
+import log from '../../core/server/log.js'
+import GithubApiProvider from './github-api-provider.js'
+import { setRoutes as setAcceptorRoutes } from './auth/acceptor.js'
 
 // Convenience class with all the stuff related to the Github API and its
 // authorization tokens, to simplify server initialization.
@@ -21,7 +15,7 @@ class GithubConstellation {
         authorizedOrigins: ['https://api.github.com'],
         isRequired: true,
       },
-      config
+      config,
     )
   }
 
@@ -29,30 +23,30 @@ class GithubConstellation {
     this._debugEnabled = config.service.debug.enabled
     this._debugIntervalSeconds = config.service.debug.intervalSeconds
 
-    const { redis_url: redisUrl } = config.private
-    const { dir: persistenceDir } = config.persistence
-    if (redisUrl) {
-      log('RedisTokenPersistence configured with redisUrl')
-      this.persistence = new RedisTokenPersistence({
-        url: redisUrl,
-        key: 'githubUserTokens',
+    let authType = GithubApiProvider.AUTH_TYPES.NO_AUTH
+
+    const { postgres_url: pgUrl, gh_token: globalToken } = config.private
+    if (pgUrl) {
+      log.log('Github Token persistence configured with pgUrl')
+      this.persistence = new SqlTokenPersistence({
+        url: pgUrl,
+        table: 'github_user_tokens',
       })
-    } else {
-      const userTokensPath = path.resolve(
-        persistenceDir,
-        'github-user-tokens.json'
-      )
-      log(`FsTokenPersistence configured with ${userTokensPath}`)
-      this.persistence = new FsTokenPersistence({ path: userTokensPath })
+      authType = GithubApiProvider.AUTH_TYPES.TOKEN_POOL
     }
 
-    const globalToken = serverSecrets.gh_token
-    const baseUrl = process.env.GITHUB_URL || 'https://api.github.com'
+    if (globalToken) {
+      authType = GithubApiProvider.AUTH_TYPES.GLOBAL_TOKEN
+    }
+
+    log.log(`Github using auth type: ${authType}`)
+
     this.apiProvider = new GithubApiProvider({
-      baseUrl,
+      baseUrl: config.service.baseUri,
       globalToken,
-      withPooling: !globalToken,
+      authType,
       onTokenInvalidated: tokenString => this.onTokenInvalidated(tokenString),
+      restApiVersion: config.service.restApiVersion,
     })
 
     this.oauthHelper = this.constructor._createOauthHelper(config)
@@ -61,17 +55,21 @@ class GithubConstellation {
   scheduleDebugLogging() {
     if (this._debugEnabled) {
       this.debugInterval = setInterval(() => {
-        log(this.apiProvider.getTokenDebugInfo())
+        log.log(this.apiProvider.getTokenDebugInfo())
       }, 1000 * this._debugIntervalSeconds)
     }
   }
 
   async initialize(server) {
-    if (!this.apiProvider.withPooling) {
+    if (this.apiProvider.authType !== GithubApiProvider.AUTH_TYPES.TOKEN_POOL) {
       return
     }
 
     this.scheduleDebugLogging()
+
+    if (!this.persistence) {
+      return
+    }
 
     let tokens = []
     try {
@@ -84,8 +82,6 @@ class GithubConstellation {
       this.apiProvider.addToken(tokenString)
     })
 
-    setAdminRoutes(this.apiProvider, server)
-
     if (this.oauthHelper.isConfigured) {
       setAcceptorRoutes({
         server,
@@ -96,6 +92,9 @@ class GithubConstellation {
   }
 
   onTokenAdded(tokenString) {
+    if (!this.persistence) {
+      throw Error('Token persistence is not configured')
+    }
     this.apiProvider.addToken(tokenString)
     process.nextTick(async () => {
       try {
@@ -107,13 +106,15 @@ class GithubConstellation {
   }
 
   onTokenInvalidated(tokenString) {
-    process.nextTick(async () => {
-      try {
-        await this.persistence.noteTokenRemoved(tokenString)
-      } catch (e) {
-        log.error(e)
-      }
-    })
+    if (this.persistence) {
+      process.nextTick(async () => {
+        try {
+          await this.persistence.noteTokenRemoved(tokenString)
+        } catch (e) {
+          log.error(e)
+        }
+      })
+    }
   }
 
   async stop() {
@@ -122,12 +123,14 @@ class GithubConstellation {
       this.debugInterval = undefined
     }
 
-    try {
-      await this.persistence.stop()
-    } catch (e) {
-      log.error(e)
+    if (this.persistence) {
+      try {
+        await this.persistence.stop()
+      } catch (e) {
+        log.error(e)
+      }
     }
   }
 }
 
-module.exports = GithubConstellation
+export default GithubConstellation

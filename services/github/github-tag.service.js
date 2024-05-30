@@ -1,14 +1,16 @@
-'use strict'
-
-const gql = require('graphql-tag')
-const Joi = require('@hapi/joi')
-const { addv } = require('../text-formatters')
-const { version: versionColor } = require('../color-formatters')
-const { latest } = require('../version')
-const { NotFound, redirector } = require('..')
-const { GithubAuthV4Service } = require('./github-auth-service')
-const { queryParamSchema } = require('./github-common-release')
-const { documentation, transformErrors } = require('./github-helpers')
+import gql from 'graphql-tag'
+import Joi from 'joi'
+import { matcher } from 'matcher'
+import { addv } from '../text-formatters.js'
+import { version as versionColor } from '../color-formatters.js'
+import { latest } from '../version.js'
+import { NotFound, redirector, pathParam } from '../index.js'
+import { GithubAuthV4Service } from './github-auth-service.js'
+import {
+  queryParamSchema,
+  openApiQueryParams,
+} from './github-common-release.js'
+import { documentation, transformErrors } from './github-helpers.js'
 
 const schema = Joi.object({
   data: Joi.object({
@@ -27,51 +29,30 @@ const schema = Joi.object({
 }).required()
 
 class GithubTag extends GithubAuthV4Service {
-  static get category() {
-    return 'version'
+  static category = 'version'
+
+  static route = {
+    base: 'github/v/tag',
+    pattern: ':user/:repo',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'github/v/tag',
-      pattern: ':user/:repo',
-      queryParamSchema,
-    }
+  static openApi = {
+    '/github/v/tag/{user}/{repo}': {
+      get: {
+        summary: 'GitHub Tag',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'user', example: 'expressjs' }),
+          pathParam({ name: 'repo', example: 'express' }),
+          ...openApiQueryParams,
+        ],
+      },
+    },
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'GitHub tag (latest by date)',
-        namedParams: { user: 'expressjs', repo: 'express' },
-        staticPreview: this.render({
-          version: 'v5.0.0-alpha.7',
-          sort: 'date',
-        }),
-        documentation,
-      },
-      {
-        title: 'GitHub tag (latest SemVer)',
-        namedParams: { user: 'expressjs', repo: 'express' },
-        queryParams: { sort: 'semver' },
-        staticPreview: this.render({ version: 'v4.16.4', sort: 'semver' }),
-        documentation,
-      },
-      {
-        title: 'GitHub tag (latest SemVer pre-release)',
-        namedParams: { user: 'expressjs', repo: 'express' },
-        queryParams: { sort: 'semver', include_prereleases: null },
-        staticPreview: this.render({
-          version: 'v5.0.0-alpha.7',
-          sort: 'semver',
-        }),
-        documentation,
-      },
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return { label: 'tag' }
+  static defaultBadgeData = {
+    label: 'tag',
   }
 
   static render({ version, sort }) {
@@ -81,11 +62,24 @@ class GithubTag extends GithubAuthV4Service {
     }
   }
 
-  async fetch({ user, repo, sort }) {
-    const limit = sort === 'semver' ? 100 : 1
+  static getLimit({ sort, filter }) {
+    if (!filter && sort === 'date') {
+      return 1
+    }
+    return 100
+  }
+
+  static applyFilter({ tags, filter }) {
+    if (!filter) {
+      return tags
+    }
+    return matcher(tags, filter)
+  }
+
+  async fetch({ user, repo, limit }) {
     return this._requestGraphql({
       query: gql`
-        query($user: String!, $repo: String!, $limit: Int!) {
+        query ($user: String!, $repo: String!, $limit: Int!) {
           repository(owner: $user, name: $repo) {
             refs(
               refPrefix: "refs/tags/"
@@ -117,11 +111,17 @@ class GithubTag extends GithubAuthV4Service {
   async handle({ user, repo }, queryParams) {
     const sort = queryParams.sort
     const includePrereleases = queryParams.include_prereleases !== undefined
+    const filter = queryParams.filter
+    const limit = this.constructor.getLimit({ sort, filter })
 
-    const json = await this.fetch({ user, repo, sort })
-    const tags = json.data.repository.refs.edges.map(edge => edge.node.name)
+    const json = await this.fetch({ user, repo, limit })
+    const tags = this.constructor.applyFilter({
+      tags: json.data.repository.refs.edges.map(edge => edge.node.name),
+      filter,
+    })
     if (tags.length === 0) {
-      throw new NotFound({ prettyMessage: 'no tags found' })
+      const prettyMessage = filter ? 'no matching tags found' : 'no tags found'
+      throw new NotFound({ prettyMessage })
     }
     return this.constructor.render({
       version: this.constructor.getLatestTag({
@@ -169,7 +169,4 @@ const redirects = {
   }),
 }
 
-module.exports = {
-  GithubTag,
-  ...redirects,
-}
+export { GithubTag, redirects }

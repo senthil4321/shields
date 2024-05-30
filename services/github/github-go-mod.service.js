@@ -1,79 +1,62 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { renderVersionBadge } = require('../version')
-const { InvalidResponse } = require('..')
-const { ConditionalGithubAuthV3Service } = require('./github-auth-service')
-const { fetchRepoContent } = require('./github-common-fetch')
-const { documentation } = require('./github-helpers')
+import Joi from 'joi'
+import { renderVersionBadge } from '../version.js'
+import { InvalidResponse, pathParam, queryParam } from '../index.js'
+import { ConditionalGithubAuthV3Service } from './github-auth-service.js'
+import { fetchRepoContent } from './github-common-fetch.js'
+import { documentation } from './github-helpers.js'
 
 const queryParamSchema = Joi.object({
   filename: Joi.string(),
 }).required()
 
-const goVersionRegExp = new RegExp('^go (.+)$', 'm')
+const goVersionRegExp = /^go ([^/\s]+)(\s*\/.+)?$/m
 
-const keywords = ['golang']
+const filenameDescription =
+  'The `filename` param can be used to specify the path to `go.mod`. By default, we look for `go.mod` in the repo root'
 
-module.exports = class GithubGoModGoVersion extends ConditionalGithubAuthV3Service {
-  static get category() {
-    return 'version'
+export default class GithubGoModGoVersion extends ConditionalGithubAuthV3Service {
+  static category = 'version'
+  static route = {
+    base: 'github/go-mod/go-version',
+    pattern: ':user/:repo/:branch*',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'github/go-mod/go-version',
-      pattern: ':user/:repo/:branch*',
-      queryParamSchema,
-    }
+  static openApi = {
+    '/github/go-mod/go-version/{user}/{repo}': {
+      get: {
+        summary: 'GitHub go.mod Go version',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'user', example: 'gohugoio' }),
+          pathParam({ name: 'repo', example: 'hugo' }),
+          queryParam({
+            name: 'filename',
+            example: 'src/go.mod',
+            description: filenameDescription,
+          }),
+        ],
+      },
+    },
+    '/github/go-mod/go-version/{user}/{repo}/{branch}': {
+      get: {
+        summary: 'GitHub go.mod Go version (branch)',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'user', example: 'gohugoio' }),
+          pathParam({ name: 'repo', example: 'hugo' }),
+          pathParam({ name: 'branch', example: 'master' }),
+          queryParam({
+            name: 'filename',
+            example: 'src/go.mod',
+            description: filenameDescription,
+          }),
+        ],
+      },
+    },
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'GitHub go.mod Go version',
-        pattern: ':user/:repo',
-        namedParams: { user: 'gohugoio', repo: 'hugo' },
-        staticPreview: this.render({ version: '1.12' }),
-        documentation,
-        keywords,
-      },
-      {
-        title: 'GitHub go.mod Go version (branch)',
-        pattern: ':user/:repo/:branch',
-        namedParams: {
-          user: 'gohugoio',
-          repo: 'hugo',
-          branch: 'master',
-        },
-        staticPreview: this.render({ version: '1.12', branch: 'master' }),
-        documentation,
-        keywords,
-      },
-      {
-        title: 'GitHub go.mod Go version (subfolder of monorepo)',
-        pattern: ':user/:repo',
-        namedParams: { user: 'golang', repo: 'go' },
-        queryParams: { filename: 'src/go.mod' },
-        staticPreview: this.render({ version: '1.14' }),
-        documentation,
-        keywords,
-      },
-      {
-        title: 'GitHub go.mod Go version (branch & subfolder of monorepo)',
-        pattern: ':user/:repo/:branch',
-        namedParams: { user: 'golang', repo: 'go', branch: 'master' },
-        queryParams: { filename: 'src/go.mod' },
-        staticPreview: this.render({ version: '1.14' }),
-        documentation,
-        keywords,
-      },
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return { label: 'Go' }
-  }
+  static defaultBadgeData = { label: 'Go' }
 
   static render({ version, branch }) {
     return renderVersionBadge({

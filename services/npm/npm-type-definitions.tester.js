@@ -1,10 +1,9 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const t = (module.exports = require('../tester').createServiceTester())
+import Joi from 'joi'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 const isTypeDefinition = Joi.string().regex(
-  /^((Flow|TypeScript)|(Flow \| TypeScript))$/
+  /^((Flow|TypeScript)|(Flow \| TypeScript))$/,
 )
 
 t.create('types (from dev dependencies)')
@@ -15,11 +14,11 @@ t.create('types (from files)')
   .get('/form-data-entries.json')
   .intercept(nock =>
     nock('https://registry.npmjs.org')
-      .get(`/form-data-entries/latest`)
+      .get('/form-data-entries/latest')
       .reply(200, {
         maintainers: [],
         files: ['index.js', 'index.d.ts'],
-      })
+      }),
   )
   .expectBadge({ label: 'types', message: isTypeDefinition })
 

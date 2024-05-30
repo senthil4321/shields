@@ -1,42 +1,51 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { BaseJsonService } = require('..')
-const {
+import Joi from 'joi'
+import { BaseJsonService, pathParams } from '../index.js'
+import {
   dockerBlue,
   buildDockerUrl,
   getDockerHubUser,
-} = require('./docker-helpers')
+} from './docker-helpers.js'
+import { fetch } from './docker-hub-common-fetch.js'
 
 const automatedBuildSchema = Joi.object({
   is_automated: Joi.boolean().required(),
 }).required()
 
-module.exports = class DockerAutomatedBuild extends BaseJsonService {
-  static get category() {
-    return 'build'
+export default class DockerAutomatedBuild extends BaseJsonService {
+  static category = 'build'
+  static route = buildDockerUrl('automated')
+
+  static auth = {
+    userKey: 'dockerhub_username',
+    passKey: 'dockerhub_pat',
+    authorizedOrigins: [
+      'https://hub.docker.com',
+      'https://registry.hub.docker.com',
+    ],
+    isRequired: false,
   }
 
-  static get route() {
-    return buildDockerUrl('automated')
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Docker Automated build',
-        namedParams: {
-          user: 'jrottenberg',
-          repo: 'ffmpeg',
-        },
-        staticPreview: this.render({ isAutomated: true }),
+  static openApi = {
+    '/docker/automated/{user}/{repo}': {
+      get: {
+        summary: 'Docker Automated build',
+        parameters: pathParams(
+          {
+            name: 'user',
+            example: 'jrottenberg',
+          },
+          {
+            name: 'repo',
+            example: 'ffmpeg',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'docker build' }
-  }
+  static _cacheLength = 14400
+
+  static defaultBadgeData = { label: 'docker build' }
 
   static render({ isAutomated }) {
     if (isAutomated) {
@@ -47,12 +56,12 @@ module.exports = class DockerAutomatedBuild extends BaseJsonService {
   }
 
   async fetch({ user, repo }) {
-    return this._requestJson({
+    return await fetch(this, {
       schema: automatedBuildSchema,
       url: `https://registry.hub.docker.com/v2/repositories/${getDockerHubUser(
-        user
+        user,
       )}/${repo}`,
-      errorMessages: { 404: 'repo not found' },
+      httpErrors: { 404: 'repo not found' },
     })
   }
 

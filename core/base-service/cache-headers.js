@@ -1,8 +1,6 @@
-'use strict'
-
-const assert = require('assert')
-const Joi = require('@hapi/joi')
-const coalesce = require('./coalesce')
+import assert from 'assert'
+import Joi from 'joi'
+import coalesce from './coalesce.js'
 
 const serverStartTimeGMTString = new Date().toGMTString()
 const serverStartTimestamp = Date.now()
@@ -41,14 +39,14 @@ function coalesceCacheLength({
   assert(defaultCacheLengthSeconds !== undefined)
 
   const cacheLength = coalesce(
+    serviceOverrideCacheLengthSeconds,
     serviceDefaultCacheLengthSeconds,
-    defaultCacheLengthSeconds
+    defaultCacheLengthSeconds,
   )
 
   // Overrides can apply _more_ caching, but not less. Query param overriding
   // can request more overriding than service override, but not less.
   const candidateOverrides = [
-    serviceOverrideCacheLengthSeconds,
     overrideCacheLengthFromQueryParams(queryParams),
   ].filter(x => x !== undefined)
 
@@ -67,7 +65,7 @@ function setHeadersForCacheLength(res, cacheLengthSeconds) {
     cacheControl = 'no-cache, no-store, must-revalidate'
     expires = nowGMTString
   } else {
-    cacheControl = `max-age=${cacheLengthSeconds} s-maxage=${cacheLengthSeconds}`
+    cacheControl = `max-age=${cacheLengthSeconds}, s-maxage=${cacheLengthSeconds}`
     expires = new Date(now.getTime() + cacheLengthSeconds * 1000).toGMTString()
   }
 
@@ -92,7 +90,7 @@ function setCacheHeaders({
   setHeadersForCacheLength(res, cacheLengthSeconds)
 }
 
-const staticCacheControlHeader = `max-age=${24 * 3600} s-maxage=${24 * 3600}` // 1 day.
+const staticCacheControlHeader = `max-age=${24 * 3600}, s-maxage=${24 * 3600}` // 1 day.
 function setCacheHeadersForStaticResource(res) {
   res.setHeader('Cache-Control', staticCacheControlHeader)
   res.setHeader('Last-Modified', serverStartTimeGMTString)
@@ -104,7 +102,7 @@ function serverHasBeenUpSinceResourceCached(req) {
   )
 }
 
-module.exports = {
+export {
   coalesceCacheLength,
   setCacheHeaders,
   setHeadersForCacheLength,

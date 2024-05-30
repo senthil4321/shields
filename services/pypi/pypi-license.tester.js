@@ -1,6 +1,5 @@
-'use strict'
-
-const t = (module.exports = require('../tester').createServiceTester())
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('license (valid, package version in request)')
   .get('/requests/2.18.4.json')
@@ -25,8 +24,8 @@ t.create('license (from trove classifier)')
           license: '',
           classifiers: ['License :: OSI Approved :: MIT License'],
         },
-        releases: {},
-      })
+        urls: [],
+      }),
   )
   .expectBadge({
     label: 'license',
@@ -47,8 +46,8 @@ t.create('license (as acronym from trove classifier)')
             'License :: OSI Approved :: GNU General Public License (GPL)',
           ],
         },
-        releases: {},
-      })
+        urls: [],
+      }),
   )
   .expectBadge({
     label: 'license',

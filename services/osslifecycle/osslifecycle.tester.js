@@ -1,11 +1,9 @@
-'use strict'
+import { ServiceTester } from '../tester.js'
 
-const { ServiceTester } = require('../tester')
-
-const t = (module.exports = new ServiceTester({
+export const t = new ServiceTester({
   id: 'osslifecycle',
   title: 'OSS Lifecycle',
-}))
+})
 
 t.create('osslifecycle active status').get('/netflix/sureal.json').expectBadge({
   label: 'oss lifecycle',
@@ -47,11 +45,11 @@ t.create('oss metadata in unexpected format')
   .intercept(
     nock =>
       nock('https://raw.githubusercontent.com')
-        .get('/some-user/some-project/master/OSSMETADATA')
-        .reply(200, `wrongkey=active`),
+        .get('/some-user/some-project/HEAD/OSSMETADATA')
+        .reply(200, 'wrongkey=active'),
     {
       'Content-Type': 'text/plain;charset=UTF-8',
-    }
+    },
   )
   .expectBadge({
     label: 'oss lifecycle',

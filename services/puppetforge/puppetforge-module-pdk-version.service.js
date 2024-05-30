@@ -1,37 +1,34 @@
-'use strict'
+import { renderVersionBadge } from '../version.js'
+import { NotFound, pathParams } from '../index.js'
+import { BasePuppetForgeModulesService } from './puppetforge-base.js'
 
-const { renderVersionBadge } = require('../version')
-const { NotFound } = require('..')
-const { BasePuppetForgeModulesService } = require('./puppetforge-base')
+export default class PuppetforgeModulePdkVersion extends BasePuppetForgeModulesService {
+  static category = 'platform-support'
 
-module.exports = class PuppetforgeModulePdkVersion extends BasePuppetForgeModulesService {
-  static get category() {
-    return 'platform-support'
+  static route = {
+    base: 'puppetforge/pdk-version',
+    pattern: ':user/:moduleName',
   }
 
-  static get route() {
-    return {
-      base: 'puppetforge/pdk-version',
-      pattern: ':user/:moduleName',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Puppet Forge – PDK version',
-        namedParams: {
-          user: 'tragiccode',
-          moduleName: 'azure_key_vault',
-        },
-        staticPreview: renderVersionBadge({ version: '1.7.1' }),
+  static openApi = {
+    '/puppetforge/pdk-version/{user}/{moduleName}': {
+      get: {
+        summary: 'Puppet Forge - PDK version',
+        parameters: pathParams(
+          {
+            name: 'user',
+            example: 'tragiccode',
+          },
+          {
+            name: 'moduleName',
+            example: 'azure_key_vault',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'pdk version' }
-  }
+  static defaultBadgeData = { label: 'pdk version' }
 
   async handle({ user, moduleName }) {
     const data = await this.fetch({ user, moduleName })

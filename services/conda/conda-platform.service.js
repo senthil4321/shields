@@ -1,31 +1,34 @@
-'use strict'
+import { pathParams } from '../index.js'
+import BaseCondaService from './conda-base.js'
 
-const BaseCondaService = require('./conda-base')
-
-module.exports = class CondaPlatform extends BaseCondaService {
-  static get category() {
-    return 'platform-support'
+export default class CondaPlatform extends BaseCondaService {
+  static category = 'platform-support'
+  static route = {
+    base: 'conda',
+    pattern: ':variant(p|pn)/:channel/:packageName',
   }
 
-  static get route() {
-    return {
-      base: 'conda',
-      pattern: ':variant(p|pn)/:channel/:pkg',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Conda',
-        namedParams: { channel: 'conda-forge', package: 'python' },
-        pattern: 'pn/:channel/:package',
-        staticPreview: this.render({
-          variant: 'pn',
-          platforms: ['linux-64', 'win-32', 'osx-64', 'win-64'],
-        }),
+  static openApi = {
+    '/conda/{variant}/{channel}/{packageName}': {
+      get: {
+        summary: 'Conda Platform',
+        parameters: pathParams(
+          {
+            name: 'variant',
+            example: 'pn',
+            schema: { type: 'string', enum: this.getEnum('variant') },
+          },
+          {
+            name: 'channel',
+            example: 'conda-forge',
+          },
+          {
+            name: 'packageName',
+            example: 'python',
+          },
+        ),
       },
-    ]
+    },
   }
 
   static render({ variant, platforms }) {
@@ -35,8 +38,8 @@ module.exports = class CondaPlatform extends BaseCondaService {
     }
   }
 
-  async handle({ variant, channel, pkg }) {
-    const json = await this.fetch({ channel, pkg })
+  async handle({ variant, channel, packageName }) {
+    const json = await this.fetch({ channel, packageName })
     return this.constructor.render({ variant, platforms: json.conda_platforms })
   }
 }

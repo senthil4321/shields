@@ -1,50 +1,33 @@
-'use strict'
-
-const { metric } = require('../text-formatters')
-const { downloadCount } = require('../color-formatters')
-const { redirector, NotFound } = require('..')
-const BaseChromeWebStoreService = require('./chrome-web-store-base')
+import { renderDownloadsBadge } from '../downloads.js'
+import { redirector, NotFound, pathParams } from '../index.js'
+import BaseChromeWebStoreService from './chrome-web-store-base.js'
 
 class ChromeWebStoreUsers extends BaseChromeWebStoreService {
-  static get category() {
-    return 'downloads'
-  }
+  static category = 'downloads'
+  static route = { base: 'chrome-web-store/users', pattern: ':storeId' }
 
-  static get route() {
-    return {
-      base: 'chrome-web-store/users',
-      pattern: ':storeId',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Chrome Web Store',
-        namedParams: { storeId: 'ogffaloegjglncjfehdfplabnoondfjo' },
-        staticPreview: this.render({ downloads: 573 }),
+  static openApi = {
+    '/chrome-web-store/users/{storeId}': {
+      get: {
+        summary: 'Chrome Web Store Users',
+        parameters: pathParams({
+          name: 'storeId',
+          example: 'ogffaloegjglncjfehdfplabnoondfjo',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'users' }
-  }
-
-  static render({ downloads }) {
-    return {
-      message: `${metric(downloads)}`,
-      color: downloadCount(downloads),
-    }
-  }
+  static defaultBadgeData = { label: 'users' }
 
   async handle({ storeId }) {
-    const data = await this.fetch({ storeId })
-    if (!data.interactionCount || !data.interactionCount.UserDownloads) {
-      throw new NotFound({ prettyMessage: 'count not found' })
+    const chromeWebStore = await this.fetch({ storeId })
+    const downloads = chromeWebStore.users()
+    if (downloads == null) {
+      throw new NotFound({ prettyMessage: 'not found' })
     }
-    return this.constructor.render({
-      downloads: data.interactionCount.UserDownloads,
+    return renderDownloadsBadge({
+      downloads: String(downloads.replace(',', '')),
     })
   }
 }
@@ -59,7 +42,4 @@ const ChromeWebStoreDownloads = redirector({
   dateAdded: new Date('2019-02-27'),
 })
 
-module.exports = {
-  ChromeWebStoreDownloads,
-  ChromeWebStoreUsers,
-}
+export { ChromeWebStoreDownloads, ChromeWebStoreUsers }

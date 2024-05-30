@@ -1,7 +1,6 @@
-'use strict'
-
-const { isMetric } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isMetric } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 // total installs
 
@@ -24,9 +23,9 @@ t.create('version installs | valid: numeric version')
   })
 
 t.create('version installs | valid: alphanumeric version')
-  .get('/build-failure-analyzer/1.17.2-DRE3.14.json')
+  .get('/build-failure-analyzer/1.17.2-DRE3.21.json')
   .expectBadge({
-    label: 'installs@1.17.2-DRE3.14',
+    label: 'installs@1.17.2-DRE3.21',
     message: isMetric,
   })
 

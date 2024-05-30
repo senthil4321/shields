@@ -1,34 +1,20 @@
-'use strict'
-
-const { expect } = require('chai')
-const Camp = require('@shields_io/camp')
-const FormData = require('form-data')
-const sinon = require('sinon')
-const portfinder = require('portfinder')
-const queryString = require('query-string')
-const nock = require('nock')
-const got = require('../../../core/got-test-client')
-const serverSecrets = require('../../../lib/server-secrets')
-const GithubConstellation = require('../github-constellation')
-const acceptor = require('./acceptor')
+import { expect } from 'chai'
+import Camp from '@shields_io/camp'
+import FormData from 'form-data'
+import sinon from 'sinon'
+import portfinder from 'portfinder'
+import queryString from 'query-string'
+import nock from 'nock'
+import got from '../../../core/got-test-client.js'
+import GithubConstellation from '../github-constellation.js'
+import { setRoutes } from './acceptor.js'
 
 const fakeClientId = 'githubdabomb'
-const fakeShieldsSecret = 'letmeinplz'
+const fakeClientSecret = 'foobar'
 
 describe('Github token acceptor', function () {
   const oauthHelper = GithubConstellation._createOauthHelper({
-    private: { gh_client_id: fakeClientId },
-  })
-  before(function () {
-    // Make sure properties exist.
-    // https://github.com/sinonjs/sinon/pull/1557
-    serverSecrets.shields_ips = undefined
-    serverSecrets.shields_secret = undefined
-    sinon.stub(serverSecrets, 'shields_ips').value([])
-    sinon.stub(serverSecrets, 'shields_secret').value(fakeShieldsSecret)
-  })
-  after(function () {
-    sinon.restore()
+    private: { gh_client_id: fakeClientId, gh_client_secret: fakeClientSecret },
   })
 
   let port, baseUrl
@@ -52,7 +38,7 @@ describe('Github token acceptor', function () {
   let onTokenAccepted
   beforeEach(function () {
     onTokenAccepted = sinon.stub()
-    acceptor.setRoutes({
+    setRoutes({
       server: camp,
       authHelper: oauthHelper,
       onTokenAccepted,
@@ -77,7 +63,7 @@ describe('Github token acceptor', function () {
       it('should return an error', async function () {
         const res = await got(`${baseUrl}/github-auth/done`)
         expect(res.body).to.equal(
-          'GitHub OAuth authentication failed to provide a code.'
+          'GitHub OAuth authentication failed to provide a code.',
         )
       })
     })
@@ -93,7 +79,10 @@ describe('Github token acceptor', function () {
         scope = nock('https://github.com')
           .post('/login/oauth/access_token')
           .reply((url, requestBody) => {
-            expect(queryString.parse(requestBody).code).to.equal(fakeCode)
+            const parsedBody = queryString.parse(requestBody)
+            expect(parsedBody.client_id).to.equal(fakeClientId)
+            expect(parsedBody.client_secret).to.equal(fakeClientSecret)
+            expect(parsedBody.code).to.equal(fakeCode)
             return [
               200,
               queryString.stringify({ access_token: fakeAccessToken }),
@@ -126,23 +115,11 @@ describe('Github token acceptor', function () {
           body: form,
         })
         expect(res.body).to.startWith(
-          '<p>Shields.io has received your app-specific GitHub user token.'
+          '<p>Shields.io has received your app-specific GitHub user token.',
         )
+
+        expect(onTokenAccepted).to.have.been.calledWith(fakeAccessToken)
       })
     })
-  })
-
-  it('should add a received token', async function () {
-    const fakeAccessToken = 'its-my-token'
-    const form = new FormData()
-    form.append('shieldsSecret', fakeShieldsSecret)
-    form.append('token', fakeAccessToken)
-
-    const { body } = await got.post(`${baseUrl}/github-auth/add-token`, {
-      body: form,
-    })
-
-    expect(onTokenAccepted).to.have.been.calledWith(fakeAccessToken)
-    expect(body).to.equal('Thanks!')
   })
 })

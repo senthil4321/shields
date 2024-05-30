@@ -1,7 +1,6 @@
-'use strict'
-
-const { isBuildStatus } = require('../build-status')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isBuildStatus } from '../build-status.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('CI status')
   .timeout(10000)
@@ -26,7 +25,7 @@ t.create('CI status on project that does exist but has no builds yet')
   .intercept(nock =>
     nock('https://ci.appveyor.com/api/projects/')
       .get('/gruntjs/grunt')
-      .reply(200, {})
+      .reply(200, {}),
   )
   .expectBadge({
     label: 'build',

@@ -1,31 +1,22 @@
-'use strict'
+import semver from 'semver'
+import PypiBase, { pypiGeneralParams } from './pypi-base.js'
+import { parseClassifiers } from './pypi-helpers.js'
 
-const PypiBase = require('./pypi-base')
-const { parseClassifiers } = require('./pypi-helpers')
+export default class PypiPythonVersions extends PypiBase {
+  static category = 'platform-support'
 
-module.exports = class PypiPythonVersions extends PypiBase {
-  static get category() {
-    return 'platform-support'
-  }
+  static route = this.buildRoute('pypi/pyversions')
 
-  static get route() {
-    return this.buildRoute('pypi/pyversions')
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'PyPI - Python Version',
-        pattern: ':packageName',
-        namedParams: { packageName: 'Django' },
-        staticPreview: this.render({ versions: ['3.5', '3.6', '3.7'] }),
+  static openApi = {
+    '/pypi/pyversions/{packageName}': {
+      get: {
+        summary: 'PyPI - Python Version',
+        parameters: pypiGeneralParams,
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'python' }
-  }
+  static defaultBadgeData = { label: 'python' }
 
   static render({ versions }) {
     const versionSet = new Set(versions)
@@ -38,7 +29,11 @@ module.exports = class PypiPythonVersions extends PypiBase {
     })
     if (versionSet.size) {
       return {
-        message: Array.from(versionSet).sort().join(' | '),
+        message: Array.from(versionSet)
+          .sort((v1, v2) =>
+            semver.compare(semver.coerce(v1), semver.coerce(v2)),
+          )
+          .join(' | '),
         color: 'blue',
       }
     } else {
@@ -49,20 +44,20 @@ module.exports = class PypiPythonVersions extends PypiBase {
     }
   }
 
-  async handle({ egg }) {
-    const packageData = await this.fetch({ egg })
+  async handle({ egg }, { pypiBaseUrl }) {
+    const packageData = await this.fetch({ egg, pypiBaseUrl })
 
     const versions = parseClassifiers(
       packageData,
-      /^Programming Language :: Python :: ([\d.]+)$/
+      /^Programming Language :: Python :: ([\d.]+)$/,
     )
     // If no versions are found yet, check "X :: Only" as a fallback.
     if (versions.length === 0) {
       versions.push(
         ...parseClassifiers(
           packageData,
-          /^Programming Language :: Python :: (\d+) :: Only$/
-        )
+          /^Programming Language :: Python :: (\d+) :: Only$/,
+        ),
       )
     }
 

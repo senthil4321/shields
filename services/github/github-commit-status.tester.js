@@ -1,7 +1,6 @@
-'use strict'
-
-const { invalidJSONString } = require('../response-fixtures')
-const t = (module.exports = require('../tester').createServiceTester())
+import { invalidJSONString } from '../response-fixtures.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('commit status - commit in branch')
   .get('/badges/shields/master/5d4ab86b1b5ddfb3c4a70a70bd19932c52603b8c.json')
@@ -12,15 +11,15 @@ t.create('commit status - commit in branch')
   })
 
 t.create(
-  'commit status - checked commit is identical with the newest commit in branch'
+  'commit status - checked commit is identical with the newest commit in branch',
 )
   .get('/badges/shields/master/5d4ab86b1b5ddfb3c4a70a70bd19932c52603b8c.json')
   .intercept(nock =>
     nock('https://api.github.com')
       .get(
-        '/repos/badges/shields/compare/master...5d4ab86b1b5ddfb3c4a70a70bd19932c52603b8c'
+        '/repos/badges/shields/compare/master...5d4ab86b1b5ddfb3c4a70a70bd19932c52603b8c',
       )
-      .reply(200, { status: 'identical' })
+      .reply(200, { status: 'identical' }),
   )
   .expectBadge({
     label: 'commit status',
@@ -46,7 +45,7 @@ t.create('commit status - unknown commit id')
 
 t.create('commit status - unknown branch')
   .get(
-    '/badges/shields/this-branch-does-not-exist/b551a3a8daf1c48dba32a3eab1edf99b10c28863.json'
+    '/badges/shields/this-branch-does-not-exist/b551a3a8daf1c48dba32a3eab1edf99b10c28863.json',
   )
   .expectBadge({
     label: 'commit status',
@@ -69,9 +68,9 @@ t.create('commit status - 404 with invalid JSON form github')
   .intercept(nock =>
     nock('https://api.github.com')
       .get(
-        '/repos/badges/shields/compare/master...5d4ab86b1b5ddfb3c4a70a70bd19932c52603b8c'
+        '/repos/badges/shields/compare/master...5d4ab86b1b5ddfb3c4a70a70bd19932c52603b8c',
       )
-      .reply(404, invalidJSONString)
+      .reply(404, invalidJSONString),
   )
   .expectBadge({
     label: 'commit status',

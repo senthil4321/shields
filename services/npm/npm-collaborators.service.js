@@ -1,43 +1,33 @@
-'use strict'
+import { pathParam, queryParam } from '../index.js'
+import { renderContributorBadge } from '../contributor-count.js'
+import NpmBase, { packageNameDescription } from './npm-base.js'
 
-const { renderContributorBadge } = require('../contributor-count')
-const NpmBase = require('./npm-base')
+export default class NpmCollaborators extends NpmBase {
+  static category = 'activity'
 
-const keywords = ['node']
+  static route = this.buildRoute('npm/collaborators', { withTag: false })
 
-module.exports = class NpmCollaborators extends NpmBase {
-  static get category() {
-    return 'activity'
-  }
-
-  static get route() {
-    return this.buildRoute('npm/collaborators', { withTag: false })
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'npm collaborators',
-        pattern: ':packageName',
-        namedParams: { packageName: 'prettier' },
-        staticPreview: this.render({ collaborators: 6 }),
-        keywords,
+  static openApi = {
+    '/npm/collaborators/{packageName}': {
+      get: {
+        summary: 'NPM Collaborators',
+        parameters: [
+          pathParam({
+            name: 'packageName',
+            example: 'prettier',
+            description: packageNameDescription,
+          }),
+          queryParam({
+            name: 'registry_uri',
+            example: 'https://registry.npmjs.com',
+          }),
+        ],
       },
-      {
-        title: 'npm collaborators',
-        pattern: ':packageName',
-        namedParams: { packageName: 'prettier' },
-        queryParams: { registry_uri: 'https://registry.npmjs.com' },
-        staticPreview: this.render({ collaborators: 6 }),
-        keywords,
-      },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'npm collaborators',
-    }
+  static defaultBadgeData = {
+    label: 'npm collaborators',
   }
 
   static render({ collaborators }) {
@@ -47,7 +37,7 @@ module.exports = class NpmCollaborators extends NpmBase {
   async handle(namedParams, queryParams) {
     const { scope, packageName, registryUrl } = this.constructor.unpackParams(
       namedParams,
-      queryParams
+      queryParams,
     )
     const { maintainers } = await this.fetchPackageData({
       scope,

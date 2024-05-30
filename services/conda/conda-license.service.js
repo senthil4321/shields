@@ -1,56 +1,45 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { renderLicenseBadge } = require('../licenses')
-const toArray = require('../../core/base-service/to-array')
-const BaseCondaService = require('./conda-base')
+import Joi from 'joi'
+import { pathParams } from '../index.js'
+import { renderLicenseBadge } from '../licenses.js'
+import toArray from '../../core/base-service/to-array.js'
+import BaseCondaService from './conda-base.js'
 
 const schema = Joi.object({
   license: Joi.string().required(),
 }).required()
 
-module.exports = class CondaLicense extends BaseCondaService {
-  static get category() {
-    return 'license'
-  }
+export default class CondaLicense extends BaseCondaService {
+  static category = 'license'
+  static route = { base: 'conda', pattern: 'l/:channel/:packageName' }
 
-  static get route() {
-    return {
-      base: 'conda',
-      pattern: 'l/:channel/:pkg',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Conda - License',
-        pattern: 'l/:channel/:package',
-        namedParams: {
-          channel: 'conda-forge',
-          package: 'setuptools',
-        },
-        staticPreview: this.render({
-          variant: 'l',
-          channel: 'conda-forge',
-          licenses: ['MIT'],
-        }),
+  static openApi = {
+    '/conda/l/{channel}/{packageName}': {
+      get: {
+        summary: 'Conda - License',
+        parameters: pathParams(
+          {
+            name: 'channel',
+            example: 'conda-forge',
+          },
+          {
+            name: 'packageName',
+            example: 'setuptools',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'license' }
-  }
+  static defaultBadgeData = { label: 'license' }
 
   static render({ licenses }) {
     return renderLicenseBadge({ licenses })
   }
 
-  async handle({ channel, pkg }) {
+  async handle({ channel, packageName }) {
     const json = await this._requestJson({
       schema,
-      url: `https://api.anaconda.org/package/${channel}/${pkg}`,
+      url: `https://api.anaconda.org/package/${channel}/${packageName}`,
     })
     return this.constructor.render({
       licenses: toArray(json.license),

@@ -1,7 +1,6 @@
-'use strict'
-
-const { isIntegerPercentage } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isIntegerPercentage } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('github coverage')
   .get('/github/jekyll/jekyll.json')
@@ -12,13 +11,21 @@ t.create('nonexistent project')
   .expectBadge({ label: 'coverage', message: 'repository not found' })
 
 t.create('github branch coverage')
-  .get('/github/lemurheavy/coveralls-ruby/master.json')
-  .expectBadge({ label: 'coverage', message: isIntegerPercentage })
-
-t.create('github coverage for legacy link')
-  .get('/jekyll/jekyll.json')
+  .get('/github/lemurheavy/coveralls-ruby.json?branch=master')
   .expectBadge({ label: 'coverage', message: isIntegerPercentage })
 
 t.create('bitbucket coverage')
   .get('/bitbucket/pyKLIP/pyklip.json')
+  .expectBadge({ label: 'coverage', message: isIntegerPercentage })
+
+t.create('bitbucket branch coverage')
+  .get('/bitbucket/pyKLIP/pyklip.json?branch=master')
+  .expectBadge({ label: 'coverage', message: isIntegerPercentage })
+
+t.create('gitlab coverage')
+  .get('/gitlab/selcouth/wsrouter.json')
+  .expectBadge({ label: 'coverage', message: isIntegerPercentage })
+
+t.create('gitlab branch coverage')
+  .get('/gitlab/selcouth/wsrouter.json?branch=master')
   .expectBadge({ label: 'coverage', message: isIntegerPercentage })

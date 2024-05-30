@@ -1,9 +1,7 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { coveragePercentage } = require('../color-formatters')
-const { BaseSvgScrapingService } = require('..')
-const { parseJson } = require('../../core/base-service/json')
+import Joi from 'joi'
+import { coveragePercentage } from '../color-formatters.js'
+import { BaseSvgScrapingService, pathParam, queryParam } from '../index.js'
+import { parseJson } from '../../core/base-service/json.js'
 
 // https://docs.codecov.io/reference#totals
 // A new repository that's been added but never had any coverage reports
@@ -22,8 +20,9 @@ const legacySchema = Joi.object({
 const queryParamSchema = Joi.object({
   token: Joi.string(),
   // https://docs.codecov.io/docs/flags
-  // Flags must be lowercase, alphanumeric, and not exceed 45 characters
-  flag: Joi.string().regex(/^[a-z0-9_]{1,45}$/),
+  // Flags Must consist only of alphanumeric characters, '_', '-', or '.'
+  // and not exceed 45 characters.
+  flag: Joi.string().regex(/^[\w.-]{1,45}$/),
 }).required()
 
 const schema = Joi.object({
@@ -36,71 +35,61 @@ const svgValueMatcher = />(\d{1,3}%|unknown)<\/text><\/g>/
 
 const badgeTokenPattern = /^\w{10}$/
 
-const documentation = `
-  <p>
-    You may specify a Codecov badge token to get coverage for a private repository.
-  </p>
-  <p>
-  You can find the token under the badge section of your project settings page, in this url: <code>https://codecov.io/{vcsName}/{user}/{repo}/settings/badge</code>.
-  </p>
+const description = `
+You may specify a Codecov badge token to get coverage for a private repository.
+
+You can find the token under the badge section of your project settings page, in this url: <code>https://codecov.io/[vcsName]/[user]/[repo]/settings/badge</code>.
 `
 
-module.exports = class Codecov extends BaseSvgScrapingService {
-  static get category() {
-    return 'coverage'
+export default class Codecov extends BaseSvgScrapingService {
+  static category = 'coverage'
+  static route = {
+    base: 'codecov/c',
+    // https://docs.codecov.io/docs#section-common-questions
+    // Github, BitBucket, and GitLab are the only supported options (long or short form)
+    pattern: ':vcsName(github|gh|bitbucket|bb|gl|gitlab)/:user/:repo/:branch*',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'codecov/c',
-      // https://docs.codecov.io/docs#section-common-questions
-      // Github, BitBucket, and GitLab are the only supported options (long or short form)
-      pattern:
-        ':vcsName(github|gh|bitbucket|bb|gl|gitlab)/:user/:repo/:branch*',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Codecov',
-        pattern: ':vcsName(github|gh|bitbucket|bb|gl|gitlab)/:user/:repo',
-        namedParams: {
-          vcsName: 'github',
-          user: 'codecov',
-          repo: 'example-node',
-        },
-        queryParams: {
-          token: 'a1b2c3d4e5',
-          flag: 'flag_name',
-        },
-        staticPreview: this.render({ coverage: 90 }),
-        documentation,
+  static openApi = {
+    '/codecov/c/{vcsName}/{user}/{repo}': {
+      get: {
+        summary: 'Codecov',
+        description,
+        parameters: [
+          pathParam({
+            name: 'vcsName',
+            example: 'github',
+            schema: { type: 'string', enum: this.getEnum('vcsName') },
+          }),
+          pathParam({ name: 'user', example: 'codecov' }),
+          pathParam({ name: 'repo', example: 'example-node' }),
+          queryParam({ name: 'token', example: 'a1b2c3d4e5' }),
+          queryParam({ name: 'flag', example: 'flag_name' }),
+        ],
       },
-      {
-        title: 'Codecov branch',
-        pattern:
-          ':vcsName(github|gh|bitbucket|bb|gl|gitlab)/:user/:repo/:branch',
-        namedParams: {
-          vcsName: 'github',
-          user: 'codecov',
-          repo: 'example-node',
-          branch: 'master',
-        },
-        queryParams: {
-          token: 'a1b2c3d4e5',
-          flag: 'flag_name',
-        },
-        staticPreview: this.render({ coverage: 90 }),
-        documentation,
+    },
+    '/codecov/c/{vcsName}/{user}/{repo}/{branch}': {
+      get: {
+        summary: 'Codecov (with branch)',
+        description,
+        parameters: [
+          pathParam({
+            name: 'vcsName',
+            example: 'github',
+            schema: { type: 'string', enum: this.getEnum('vcsName') },
+          }),
+          pathParam({ name: 'user', example: 'codecov' }),
+          pathParam({ name: 'repo', example: 'example-node' }),
+          pathParam({ name: 'branch', example: 'master' }),
+          queryParam({ name: 'token', example: 'a1b2c3d4e5' }),
+          queryParam({ name: 'flag', example: 'flag_name' }),
+        ],
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'coverage' }
-  }
+  static defaultBadgeData = { label: 'coverage' }
 
   static render({ coverage }) {
     if (coverage === 'unknown') {
@@ -119,7 +108,7 @@ module.exports = class Codecov extends BaseSvgScrapingService {
   async legacyFetch({ vcsName, user, repo, branch, token }) {
     // Codecov Docs: https://docs.codecov.io/reference#section-get-a-single-repository
     const url = `https://codecov.io/api/${vcsName}/${user}/${repo}${
-      branch ? `/branches/${branch}` : ''
+      branch ? `/branch/${branch}` : ''
     }`
     const { buffer } = await this._request({
       url,
@@ -129,7 +118,7 @@ module.exports = class Codecov extends BaseSvgScrapingService {
           Authorization: `token ${token}`,
         },
       },
-      errorMessages: {
+      httpErrors: {
         401: 'not authorized to access repository',
         404: 'repository not found',
       },
@@ -163,9 +152,9 @@ module.exports = class Codecov extends BaseSvgScrapingService {
       valueMatcher: svgValueMatcher,
       url,
       options: {
-        qs: { token, flag },
+        searchParams: { token, flag },
       },
-      errorMessages: token ? { 400: 'invalid token pattern' } : {},
+      httpErrors: token ? { 400: 'invalid token pattern' } : {},
     })
   }
 

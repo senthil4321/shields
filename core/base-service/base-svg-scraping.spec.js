@@ -1,29 +1,16 @@
-'use strict'
-
-const { expect } = require('chai')
-const sinon = require('sinon')
-const Joi = require('@hapi/joi')
-const makeBadge = require('../../badge-maker/lib/make-badge')
-const BaseSvgScrapingService = require('./base-svg-scraping')
-
-function makeExampleSvg({ label, message }) {
-  return makeBadge({ text: ['this is the label', 'this is the result!'] })
-}
+import { expect } from 'chai'
+import sinon from 'sinon'
+import Joi from 'joi'
+import makeBadge from '../../badge-maker/lib/make-badge.js'
+import BaseSvgScrapingService from './base-svg-scraping.js'
 
 const schema = Joi.object({
   message: Joi.string().required(),
 }).required()
 
 class DummySvgScrapingService extends BaseSvgScrapingService {
-  static get category() {
-    return 'cat'
-  }
-
-  static get route() {
-    return {
-      base: 'foo',
-    }
-  }
+  static category = 'cat'
+  static route = { base: 'foo' }
 
   async handle() {
     return this._requestSvg({
@@ -36,45 +23,42 @@ class DummySvgScrapingService extends BaseSvgScrapingService {
 describe('BaseSvgScrapingService', function () {
   const exampleLabel = 'this is the label'
   const exampleMessage = 'this is the result!'
-  const exampleSvg = makeExampleSvg({
-    label: exampleLabel,
-    message: exampleMessage,
-  })
+  const exampleSvg = makeBadge({ label: exampleLabel, message: exampleMessage })
 
   describe('valueFromSvgBadge', function () {
     it('should find the correct value', function () {
       expect(BaseSvgScrapingService.valueFromSvgBadge(exampleSvg)).to.equal(
-        exampleMessage
+        exampleMessage,
       )
     })
   })
 
   describe('Making requests', function () {
-    let sendAndCacheRequest
+    let requestFetcher
     beforeEach(function () {
-      sendAndCacheRequest = sinon.stub().returns(
+      requestFetcher = sinon.stub().returns(
         Promise.resolve({
           buffer: exampleSvg,
           res: { statusCode: 200 },
-        })
+        }),
       )
     })
 
-    it('invokes _sendAndCacheRequest with the expected header', async function () {
+    it('invokes _requestFetcher with the expected header', async function () {
       await DummySvgScrapingService.invoke(
-        { sendAndCacheRequest },
-        { handleInternalErrors: false }
+        { requestFetcher },
+        { handleInternalErrors: false },
       )
 
-      expect(sendAndCacheRequest).to.have.been.calledOnceWith(
+      expect(requestFetcher).to.have.been.calledOnceWith(
         'http://example.com/foo.svg',
         {
           headers: { Accept: 'image/svg+xml' },
-        }
+        },
       )
     })
 
-    it('forwards options to _sendAndCacheRequest', async function () {
+    it('forwards options to _requestFetcher', async function () {
       class WithCustomOptions extends DummySvgScrapingService {
         async handle() {
           const { message } = await this._requestSvg({
@@ -82,7 +66,7 @@ describe('BaseSvgScrapingService', function () {
             url: 'http://example.com/foo.svg',
             options: {
               method: 'POST',
-              qs: { queryParam: 123 },
+              searchParams: { queryParam: 123 },
             },
           })
           return { message }
@@ -90,32 +74,32 @@ describe('BaseSvgScrapingService', function () {
       }
 
       await WithCustomOptions.invoke(
-        { sendAndCacheRequest },
-        { handleInternalErrors: false }
+        { requestFetcher },
+        { handleInternalErrors: false },
       )
 
-      expect(sendAndCacheRequest).to.have.been.calledOnceWith(
+      expect(requestFetcher).to.have.been.calledOnceWith(
         'http://example.com/foo.svg',
         {
           method: 'POST',
           headers: { Accept: 'image/svg+xml' },
-          qs: { queryParam: 123 },
-        }
+          searchParams: { queryParam: 123 },
+        },
       )
     })
   })
 
   describe('Making badges', function () {
     it('handles valid svg responses', async function () {
-      const sendAndCacheRequest = async () => ({
+      const requestFetcher = async () => ({
         buffer: exampleSvg,
         res: { statusCode: 200 },
       })
       expect(
         await DummySvgScrapingService.invoke(
-          { sendAndCacheRequest },
-          { handleInternalErrors: false }
-        )
+          { requestFetcher },
+          { handleInternalErrors: false },
+        ),
       ).to.deep.equal({
         message: exampleMessage,
       })
@@ -123,9 +107,7 @@ describe('BaseSvgScrapingService', function () {
 
     it('allows overriding the valueMatcher', async function () {
       class WithValueMatcher extends BaseSvgScrapingService {
-        static get route() {
-          return {}
-        }
+        static route = {}
 
         async handle() {
           return this._requestSvg({
@@ -135,30 +117,30 @@ describe('BaseSvgScrapingService', function () {
           })
         }
       }
-      const sendAndCacheRequest = async () => ({
+      const requestFetcher = async () => ({
         buffer: '<desc>a different message</desc>',
         res: { statusCode: 200 },
       })
       expect(
         await WithValueMatcher.invoke(
-          { sendAndCacheRequest },
-          { handleInternalErrors: false }
-        )
+          { requestFetcher },
+          { handleInternalErrors: false },
+        ),
       ).to.deep.equal({
         message: 'a different message',
       })
     })
 
     it('handles unparseable svg responses', async function () {
-      const sendAndCacheRequest = async () => ({
+      const requestFetcher = async () => ({
         buffer: 'not svg yo',
         res: { statusCode: 200 },
       })
       expect(
         await DummySvgScrapingService.invoke(
-          { sendAndCacheRequest },
-          { handleInternalErrors: false }
-        )
+          { requestFetcher },
+          { handleInternalErrors: false },
+        ),
       ).to.deep.equal({
         isError: true,
         color: 'lightgray',

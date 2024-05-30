@@ -1,15 +1,17 @@
-'use strict'
+import { ServiceTester } from '../tester.js'
+import { isRelativeFormattedDate } from '../test-validators.js'
 
-const { ServiceTester } = require('../tester')
-const { isRelativeFormattedDate } = require('../test-validators')
-
-const t = (module.exports = new ServiceTester({
+export const t = new ServiceTester({
   id: 'date',
   title: 'Relative Date Tests',
-}))
+})
 
 t.create('Relative date')
   .get('/1540814400.json')
+  .expectBadge({ label: 'date', message: isRelativeFormattedDate })
+
+t.create('Relative date (negative)')
+  .get('/-1.json')
   .expectBadge({ label: 'date', message: isRelativeFormattedDate })
 
 t.create('Relative date - Invalid')

@@ -1,7 +1,5 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import { BaseJsonService, pathParam, queryParam } from '../index.js'
 
 // https://devcenter.bitrise.io/api/app-status-badge/
 const schema = Joi.object({
@@ -12,35 +10,54 @@ const queryParamSchema = Joi.object({
   token: Joi.string().required(),
 }).required()
 
-module.exports = class Bitrise extends BaseJsonService {
-  static get category() {
-    return 'build'
+export default class Bitrise extends BaseJsonService {
+  static category = 'build'
+  static route = {
+    base: 'bitrise',
+    pattern: ':appId/:branch?',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'bitrise',
-      pattern: ':appId/:branch?',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Bitrise',
-        namedParams: { appId: 'cde737473028420d', branch: 'master' },
-        queryParams: { token: 'GCIdEzacE4GW32jLVrZb7A' },
-        staticPreview: this.render({ status: 'success' }),
+  static openApi = {
+    '/bitrise/{appId}': {
+      get: {
+        summary: 'Bitrise',
+        parameters: [
+          pathParam({
+            name: 'appId',
+            example: '4a2b10a819d12b67',
+          }),
+          queryParam({
+            name: 'token',
+            example: 'abc123def456',
+            required: true,
+          }),
+        ],
       },
-    ]
+    },
+    '/bitrise/{appId}/{branch}': {
+      get: {
+        summary: 'Bitrise (branch)',
+        parameters: [
+          pathParam({
+            name: 'appId',
+            example: 'e736852157296019',
+          }),
+          pathParam({
+            name: 'branch',
+            example: 'master',
+          }),
+          queryParam({
+            name: 'token',
+            example: 'abc123def456',
+            required: true,
+          }),
+        ],
+      },
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'bitrise',
-    }
-  }
+  static defaultBadgeData = { label: 'bitrise' }
 
   static render({ status }) {
     const color = {
@@ -64,11 +81,11 @@ module.exports = class Bitrise extends BaseJsonService {
   async fetch({ appId, branch, token }) {
     return this._requestJson({
       url: `https://app.bitrise.io/app/${encodeURIComponent(
-        appId
+        appId,
       )}/status.json`,
-      options: { qs: { token, branch } },
+      options: { searchParams: { token, branch } },
       schema,
-      errorMessages: {
+      httpErrors: {
         403: 'app not found or invalid token',
       },
     })

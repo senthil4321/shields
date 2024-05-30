@@ -1,67 +1,59 @@
-'use strict'
-
-const {
+import { pathParam } from '../index.js'
+import {
   testResultQueryParamSchema,
+  testResultOpenApiQueryParams,
   renderTestResultBadge,
-  documentation: testResultsDocumentation,
-} = require('../test-results')
-const { metric: metricCount } = require('../text-formatters')
-const SonarBase = require('./sonar-base')
-const {
+  documentation as testResultsDocumentation,
+} from '../test-results.js'
+import { metric as metricCount } from '../text-formatters.js'
+import SonarBase from './sonar-base.js'
+import {
   documentation,
-  keywords,
   queryParamSchema,
+  openApiQueryParams,
   getLabel,
-} = require('./sonar-helpers')
+} from './sonar-helpers.js'
 
 class SonarTestsSummary extends SonarBase {
-  static get category() {
-    return 'build'
+  static category = 'test-results'
+  static route = {
+    base: 'sonar/tests',
+    pattern: ':component/:branch*',
+    queryParamSchema: queryParamSchema.concat(testResultQueryParamSchema),
   }
 
-  static get route() {
-    return {
-      base: 'sonar/tests',
-      pattern: ':component',
-      queryParamSchema: queryParamSchema.concat(testResultQueryParamSchema),
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Sonar Tests',
-        namedParams: {
-          component: 'org.ow2.petals:petals-se-ase',
-        },
-        queryParams: {
-          server: 'http://sonar.petalslink.com',
-          sonarVersion: '4.2',
-          compact_message: null,
-          passed_label: 'passed',
-          failed_label: 'failed',
-          skipped_label: 'skipped',
-        },
-        staticPreview: this.render({
-          passed: 5,
-          failed: 1,
-          skipped: 0,
-          total: 6,
-          isCompact: false,
-        }),
-        keywords,
-        documentation: `
-          ${documentation}
+  static openApi = {
+    '/sonar/tests/{component}': {
+      get: {
+        summary: 'Sonar Tests',
+        description: `${documentation}
           ${testResultsDocumentation}
         `,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          ...openApiQueryParams,
+          ...testResultOpenApiQueryParams,
+        ],
       },
-    ]
+    },
+    '/sonar/tests/{component}/{branch}': {
+      get: {
+        summary: 'Sonar Tests (branch)',
+        description: `${documentation}
+          ${testResultsDocumentation}
+        `,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          pathParam({ name: 'branch', example: 'master' }),
+          ...openApiQueryParams,
+          ...testResultOpenApiQueryParams,
+        ],
+      },
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'tests',
-    }
+  static defaultBadgeData = {
+    label: 'tests',
   }
 
   static render({
@@ -105,7 +97,7 @@ class SonarTestsSummary extends SonarBase {
   }
 
   async handle(
-    { component },
+    { component, branch },
     {
       server,
       sonarVersion,
@@ -113,12 +105,13 @@ class SonarTestsSummary extends SonarBase {
       passed_label: passedLabel,
       failed_label: failedLabel,
       skipped_label: skippedLabel,
-    }
+    },
   ) {
     const json = await this.fetch({
       sonarVersion,
       server,
       component,
+      branch,
       metricName: 'tests,test_failures,skipped_tests',
     })
     const { total, passed, failed, skipped } = this.transform({
@@ -139,81 +132,109 @@ class SonarTestsSummary extends SonarBase {
 }
 
 class SonarTests extends SonarBase {
-  static get category() {
-    return 'build'
+  static category = 'build'
+
+  static route = {
+    base: 'sonar',
+    pattern:
+      ':metric(total_tests|skipped_tests|test_failures|test_errors|test_execution_time|test_success_density)/:component/:branch*',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'sonar',
-      pattern:
-        ':metric(total_tests|skipped_tests|test_failures|test_errors|test_execution_time|test_success_density)/:component',
-      queryParamSchema,
-    }
+  static openApi = {
+    '/sonar/{metric}/{component}': {
+      get: {
+        summary: 'Sonar Test Count',
+        description: documentation,
+        parameters: [
+          pathParam({
+            name: 'metric',
+            example: 'total_tests',
+            schema: {
+              type: 'string',
+              enum: [
+                'total_tests',
+                'skipped_tests',
+                'test_failures',
+                'test_errors',
+              ],
+            },
+          }),
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          ...openApiQueryParams,
+        ],
+      },
+    },
+    '/sonar/{metric}/{component}/{branch}': {
+      get: {
+        summary: 'Sonar Test Count (branch)',
+        description: documentation,
+        parameters: [
+          pathParam({
+            name: 'metric',
+            example: 'total_tests',
+            schema: {
+              type: 'string',
+              enum: [
+                'total_tests',
+                'skipped_tests',
+                'test_failures',
+                'test_errors',
+              ],
+            },
+          }),
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          pathParam({ name: 'branch', example: 'master' }),
+          ...openApiQueryParams,
+        ],
+      },
+    },
+    '/sonar/test_execution_time/{component}': {
+      get: {
+        summary: 'Sonar Test Execution Time',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          ...openApiQueryParams,
+        ],
+      },
+    },
+    '/sonar/test_execution_time/{component}/{branch}': {
+      get: {
+        summary: 'Sonar Test Execution Time (branch)',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          pathParam({ name: 'branch', example: 'master' }),
+          ...openApiQueryParams,
+        ],
+      },
+    },
+    '/sonar/test_success_density/{component}': {
+      get: {
+        summary: 'Sonar Test Success Rate',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          ...openApiQueryParams,
+        ],
+      },
+    },
+    '/sonar/test_success_density/{component}/{branch}': {
+      get: {
+        summary: 'Sonar Test Success Rate (branch)',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          pathParam({ name: 'branch', example: 'master' }),
+          ...openApiQueryParams,
+        ],
+      },
+    },
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'Sonar Test Count',
-        pattern:
-          ':metric(total_tests|skipped_tests|test_failures|test_errors)/:component',
-        namedParams: {
-          component: 'org.ow2.petals:petals-log',
-          metric: 'total_tests',
-        },
-        queryParams: {
-          server: 'http://sonar.petalslink.com',
-          sonarVersion: '4.2',
-        },
-        staticPreview: this.render({
-          metric: 'total_tests',
-          value: 131,
-        }),
-        keywords,
-        documentation,
-      },
-      {
-        title: 'Sonar Test Execution Time',
-        pattern: 'test_execution_time/:component',
-        namedParams: {
-          component: 'swellaby:azure-pipelines-templates',
-        },
-        queryParams: {
-          server: 'https://sonarcloud.io',
-          sonarVersion: '4.2',
-        },
-        staticPreview: this.render({
-          metric: 'test_execution_time',
-          value: 2,
-        }),
-        keywords,
-        documentation,
-      },
-      {
-        title: 'Sonar Test Success Rate',
-        pattern: 'test_success_density/:component',
-        namedParams: {
-          component: 'swellaby:azure-pipelines-templates',
-        },
-        queryParams: {
-          server: 'https://sonarcloud.io',
-          sonarVersion: '4.2',
-        },
-        staticPreview: this.render({
-          metric: 'test_success_density',
-          value: 100,
-        }),
-        keywords,
-        documentation,
-      },
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return {
-      label: 'tests',
-    }
+  static defaultBadgeData = {
+    label: 'tests',
   }
 
   static render({ value, metric }) {
@@ -236,11 +257,12 @@ class SonarTests extends SonarBase {
     }
   }
 
-  async handle({ component, metric }, { server, sonarVersion }) {
+  async handle({ component, metric, branch }, { server, sonarVersion }) {
     const json = await this.fetch({
       sonarVersion,
       server,
       component,
+      branch,
       // We're using 'tests' as the metric key to provide our standard
       // formatted test badge (passed, failed, skipped) that exists for other
       // services. Therefore, we're exposing 'total_tests' to the user, and
@@ -257,4 +279,4 @@ class SonarTests extends SonarBase {
   }
 }
 
-module.exports = [SonarTestsSummary, SonarTests]
+export { SonarTestsSummary, SonarTests }

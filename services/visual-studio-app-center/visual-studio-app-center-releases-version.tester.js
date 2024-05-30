@@ -1,6 +1,5 @@
-'use strict'
-
-const t = (module.exports = require('../tester').createServiceTester())
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 // Note:
 // Unfortunately an Invalid user, invalid project, valid API token test is not possible due to the way Microsoft cache their responses.
@@ -9,7 +8,7 @@ const t = (module.exports = require('../tester').createServiceTester())
 t.create('[fixed] Example Release')
   // This application will never have a new release created.
   .get(
-    '/jct/test-fixed-android-react/8c9b519a0750095b9fea3d40b2645d8a0c24a2f3.json'
+    '/jct/test-fixed-android-react/8c9b519a0750095b9fea3d40b2645d8a0c24a2f3.json',
   )
   .expectBadge({
     label: 'release',
@@ -28,6 +27,21 @@ t.create('Invalid user, invalid project, valid API token')
   .expectBadge({
     label: 'release',
     message: 'project not found',
+  })
+
+t.create('Missing Short Version')
+  .get('/nock/nock/nock.json')
+  .intercept(nock =>
+    nock('https://api.appcenter.ms/v0.1/apps/')
+      .get('/nock/nock/releases/latest')
+      .reply(200, {
+        version: '1.0',
+        short_version: '',
+      }),
+  )
+  .expectBadge({
+    label: 'release',
+    message: 'v1.0',
   })
 
 t.create('Invalid API Token').get('/invalid/invalid/invalid.json').expectBadge({

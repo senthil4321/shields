@@ -1,9 +1,8 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { metric, addv, maybePluralize } = require('../text-formatters')
-const { downloadCount, version: versionColor } = require('../color-formatters')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import { renderDownloadsBadge } from '../downloads.js'
+import { maybePluralize } from '../text-formatters.js'
+import { renderVersionBadge } from '../version.js'
+import { BaseJsonService, pathParams } from '../index.js'
 
 const hexSchema = Joi.object({
   downloads: Joi.object({
@@ -15,15 +14,14 @@ const hexSchema = Joi.object({
   meta: Joi.object({
     licenses: Joi.array().required(),
   }).required(),
-  releases: Joi.array()
-    .items(Joi.object({ version: Joi.string().required() }).required())
-    .required(),
+  latest_stable_version: Joi.string().allow(null),
+  latest_version: Joi.string().required(),
 }).required()
 
+const description = '[Hex.pm](https://hex.pm/) is a package registry for Erlang'
+
 class BaseHexPmService extends BaseJsonService {
-  static get defaultBadgeData() {
-    return { label: 'hex' }
-  }
+  static defaultBadgeData = { label: 'hex' }
 
   async fetch({ packageName }) {
     return this._requestJson({
@@ -34,30 +32,27 @@ class BaseHexPmService extends BaseJsonService {
 }
 
 class HexPmLicense extends BaseHexPmService {
-  static get category() {
-    return 'license'
+  static category = 'license'
+
+  static route = {
+    base: 'hexpm/l',
+    pattern: ':packageName',
   }
 
-  static get route() {
-    return {
-      base: 'hexpm/l',
-      pattern: ':packageName',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Hex.pm',
-        namedParams: { packageName: 'plug' },
-        staticPreview: this.render({ licenses: ['Apache 2'] }),
+  static openApi = {
+    '/hexpm/l/{packageName}': {
+      get: {
+        summary: 'Hex.pm License',
+        description,
+        parameters: pathParams({
+          name: 'packageName',
+          example: 'plug',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'license' }
-  }
+  static defaultBadgeData = { label: 'license' }
 
   static render({ licenses }) {
     if (licenses.length === 0) {
@@ -81,100 +76,91 @@ class HexPmLicense extends BaseHexPmService {
 }
 
 class HexPmVersion extends BaseHexPmService {
-  static get category() {
-    return 'version'
+  static category = 'version'
+
+  static route = {
+    base: 'hexpm/v',
+    pattern: ':packageName',
   }
 
-  static get route() {
-    return {
-      base: 'hexpm/v',
-      pattern: ':packageName',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Hex.pm',
-        namedParams: { packageName: 'plug' },
-        staticPreview: this.render({ version: '1.6.4' }),
+  static openApi = {
+    '/hexpm/v/{packageName}': {
+      get: {
+        summary: 'Hex.pm Version',
+        description,
+        parameters: pathParams({
+          name: 'packageName',
+          example: 'plug',
+        }),
       },
-    ]
+    },
   }
 
   static render({ version }) {
-    return { message: addv(version), color: versionColor(version) }
+    return renderVersionBadge({ version })
   }
 
   async handle({ packageName }) {
     const json = await this.fetch({ packageName })
-    return this.constructor.render({ version: json.releases[0].version })
+    return this.constructor.render({
+      version: json.latest_stable_version || json.latest_version,
+    })
   }
 }
 
-function DownloadsForInterval(interval) {
-  const { base, messageSuffix, name } = {
-    day: {
-      base: 'hexpm/dd',
-      messageSuffix: '/day',
-      name: 'HexPmDownloadsDay',
+const periodMap = {
+  dd: {
+    field: 'day',
+    label: 'day',
+  },
+  dw: {
+    field: 'week',
+    label: 'week',
+  },
+  dt: {
+    field: 'all',
+  },
+}
+
+class HexPmDownloads extends BaseHexPmService {
+  static category = 'downloads'
+
+  static route = {
+    base: 'hexpm',
+    pattern: ':interval(dd|dw|dt)/:packageName',
+  }
+
+  static openApi = {
+    '/hexpm/{interval}/{packageName}': {
+      get: {
+        summary: 'Hex.pm Downloads',
+        description,
+        parameters: pathParams(
+          {
+            name: 'interval',
+            example: 'dw',
+            schema: { type: 'string', enum: this.getEnum('interval') },
+            description: 'Daily, Weekly, or Total downloads',
+          },
+          {
+            name: 'packageName',
+            example: 'plug',
+          },
+        ),
+      },
     },
-    week: {
-      base: 'hexpm/dw',
-      messageSuffix: '/week',
-      name: 'HexPmDownloadsWeek',
-    },
-    all: {
-      base: 'hexpm/dt',
-      messageSuffix: '',
-      name: 'HexPmDownloadsTotal',
-    },
-  }[interval]
+  }
 
-  return class HexPmDownloads extends BaseHexPmService {
-    static get name() {
-      return name
-    }
+  static defaultBadgeData = { label: 'downloads' }
 
-    static get category() {
-      return 'downloads'
-    }
-
-    static get route() {
-      return {
-        base,
-        pattern: ':packageName',
-      }
-    }
-
-    static get examples() {
-      return [
-        {
-          title: 'Hex.pm',
-          namedParams: { packageName: 'plug' },
-          staticPreview: this.render({ downloads: 85000 }),
-        },
-      ]
-    }
-
-    static get defaultBadgeData() {
-      return { label: 'downloads' }
-    }
-
-    static render({ downloads }) {
-      return {
-        message: `${metric(downloads)}${messageSuffix}`,
-        color: downloadCount(downloads),
-      }
-    }
-
-    async handle({ packageName }) {
-      const json = await this.fetch({ packageName })
-      return this.constructor.render({ downloads: json.downloads[interval] })
-    }
+  async handle({ interval, packageName }) {
+    const json = await this.fetch({ packageName })
+    const downloads = json.downloads[periodMap[interval].field]
+    return renderDownloadsBadge({
+      downloads,
+      interval: periodMap[interval].label,
+    })
   }
 }
 
-const downloadsServices = ['day', 'week', 'all'].map(DownloadsForInterval)
-
-module.exports = [...downloadsServices, HexPmLicense, HexPmVersion]
+export default [HexPmDownloads, HexPmLicense, HexPmVersion]

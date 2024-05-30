@@ -1,51 +1,34 @@
-'use strict'
+import { renderDownloadsBadge } from '../downloads.js'
+import { redirector, pathParams } from '../index.js'
+import { BaseAmoService, description as baseDescription } from './amo-base.js'
 
-const { metric } = require('../text-formatters')
-const { downloadCount } = require('../color-formatters')
-const { redirector } = require('..')
-const { BaseAmoService, keywords } = require('./amo-base')
+const description = `${baseDescription}
 
-const documentation = `
-<p>
-  Previously <code>amo/d</code> provided a &ldquo;total downloads&rdquo; badge. However,
-  <a href="https://github.com/badges/shields/issues/3079">updates to the v3 API</a> only
-  give us weekly downloads. The route <code>amo/d</code> redirects to <code>amo/dw</code>.
-</p>
+Previously \`amo/d\` provided a &ldquo;total downloads&rdquo; badge. However,
+[updates to the v3 API](https://github.com/badges/shields/issues/3079)
+only give us weekly downloads. The route \`amo/d\` redirects to \`amo/dw\`.
 `
 
 class AmoWeeklyDownloads extends BaseAmoService {
-  static get category() {
-    return 'downloads'
-  }
+  static category = 'downloads'
+  static route = { base: 'amo/dw', pattern: ':addonId' }
 
-  static get route() {
-    return {
-      base: 'amo/dw',
-      pattern: ':addonId',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Mozilla Add-on',
-        namedParams: { addonId: 'dustman' },
-        staticPreview: this.render({ downloads: 120 }),
-        keywords,
-        documentation,
+  static openApi = {
+    '/amo/dw/{addonId}': {
+      get: {
+        summary: 'Mozilla Add-on Downloads',
+        description,
+        parameters: pathParams({ name: 'addonId', example: 'dustman' }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'downloads' }
-  }
+  static _cacheLength = 21600
+
+  static defaultBadgeData = { label: 'downloads' }
 
   static render({ downloads }) {
-    return {
-      message: `${metric(downloads)}/week`,
-      color: downloadCount(downloads),
-    }
+    return renderDownloadsBadge({ downloads, interval: 'week' })
   }
 
   async handle({ addonId }) {
@@ -66,7 +49,4 @@ const AmoLegacyRedirect = redirector({
   dateAdded: new Date('2019-02-23'),
 })
 
-module.exports = {
-  AmoWeeklyDownloads,
-  AmoLegacyRedirect,
-}
+export { AmoWeeklyDownloads, AmoLegacyRedirect }

@@ -1,10 +1,9 @@
-'use strict'
 /**
  * @module
  */
 
-const crypto = require('crypto')
-const PriorityQueue = require('priorityqueuejs')
+import crypto from 'crypto'
+import PriorityQueue from 'priorityqueuejs'
 
 /**
  * Compute a one-way hash of the input string.
@@ -79,6 +78,10 @@ class Token {
 
   get isExhausted() {
     return this.usesRemaining <= 0 && !this.hasReset
+  }
+
+  get decrementedUsesRemaining() {
+    return this._usesRemaining - 1
   }
 
   /**
@@ -329,33 +332,6 @@ class TokenPool {
     this.fifoQueue.forEach(visit)
     this.priorityQueue.forEach(visit)
   }
-
-  allValidTokenIds() {
-    const result = []
-    this.forEach(({ id }) => result.push(id))
-    return result
-  }
-
-  serializeDebugInfo({ sanitize = true } = {}) {
-    const maybeSanitize = sanitize ? id => sanitizeToken(id) : id => id
-
-    const priorityQueue = []
-    this.priorityQueue.forEach(t =>
-      priorityQueue.push(t.getDebugInfo({ sanitize }))
-    )
-
-    return {
-      utcEpochSeconds: getUtcEpochSeconds(),
-      allValidTokenIds: this.allValidTokenIds().map(maybeSanitize),
-      fifoQueue: this.fifoQueue.map(t => t.getDebugInfo({ sanitize })),
-      priorityQueue,
-      sanitized: sanitize,
-    }
-  }
 }
 
-module.exports = {
-  sanitizeToken,
-  Token,
-  TokenPool,
-}
+export { sanitizeToken, Token, TokenPool }

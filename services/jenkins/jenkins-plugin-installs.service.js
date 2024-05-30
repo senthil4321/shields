@@ -1,10 +1,7 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { downloadCount: downloadCountColor } = require('../color-formatters')
-const { metric } = require('../text-formatters')
-const { nonNegativeInteger } = require('../validators')
-const { BaseJsonService, NotFound } = require('..')
+import Joi from 'joi'
+import { renderDownloadsBadge } from '../downloads.js'
+import { nonNegativeInteger } from '../validators.js'
+import { BaseJsonService, NotFound, pathParams } from '../index.js'
 
 const schemaInstallations = Joi.object()
   .keys({
@@ -24,103 +21,79 @@ const schemaInstallationsPerVersion = Joi.object()
   })
   .required()
 
-module.exports = class JenkinsPluginInstalls extends BaseJsonService {
-  static _getSchema(version) {
-    if (version) {
-      return schemaInstallationsPerVersion
-    } else {
-      return schemaInstallations
-    }
+export default class JenkinsPluginInstalls extends BaseJsonService {
+  static category = 'downloads'
+
+  static route = {
+    base: 'jenkins/plugin/i',
+    pattern: ':plugin/:version?',
   }
 
-  static _getLabel(version) {
-    if (version) {
-      return `installs@${version}`
-    } else {
-      return 'installs'
-    }
-  }
-
-  static get category() {
-    return 'downloads'
-  }
-
-  static get route() {
-    return {
-      base: 'jenkins/plugin/i',
-      pattern: ':plugin/:version?',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Jenkins Plugin installs',
-        pattern: ':plugin',
-        namedParams: {
-          plugin: 'view-job-filters',
-        },
-        staticPreview: this.render({
-          label: this._getLabel(),
-          installs: 10247,
+  static openApi = {
+    '/jenkins/plugin/i/{plugin}': {
+      get: {
+        summary: 'Jenkins Plugin installs',
+        parameters: pathParams({
+          name: 'plugin',
+          example: 'view-job-filters',
         }),
       },
-      {
-        title: 'Jenkins Plugin installs (version)',
-        pattern: ':plugin/:version',
-        namedParams: {
-          plugin: 'view-job-filters',
-          version: '1.26',
-        },
-        staticPreview: this.render({
-          label: this._getLabel('1.26'),
-          installs: 955,
-        }),
+    },
+    '/jenkins/plugin/i/{plugin}/{version}': {
+      get: {
+        summary: 'Jenkins Plugin installs (version)',
+        parameters: pathParams(
+          {
+            name: 'plugin',
+            example: 'view-job-filters',
+          },
+          {
+            name: 'version',
+            example: '1.26',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'installs' }
-  }
+  static defaultBadgeData = { label: 'installs' }
 
-  static render({ label, installs }) {
-    return {
-      label,
-      message: metric(installs),
-      color: downloadCountColor(installs),
-    }
+  static render({ installs: downloads, version }) {
+    return renderDownloadsBadge({
+      downloads,
+      versionedLabelPrefix: 'installs',
+      version,
+    })
   }
 
   async fetch({ plugin, version }) {
-    const url = `https://stats.jenkins.io/plugin-installation-trend/${plugin}.stats.json`
-    const schema = this.constructor._getSchema(version)
     return this._requestJson({
-      url,
-      schema,
-      errorMessages: {
+      url: `https://stats.jenkins.io/plugin-installation-trend/${plugin}.stats.json`,
+      schema: version ? schemaInstallationsPerVersion : schemaInstallations,
+      httpErrors: {
         404: 'plugin not found',
       },
     })
   }
 
-  async handle({ plugin, version }) {
-    const label = this.constructor._getLabel(version)
-    const json = await this.fetch({ plugin, version })
-
-    let installs
-    if (version) {
-      installs = json.installationsPerVersion[version]
-      if (!installs) {
-        throw new NotFound({
-          prettyMessage: 'version not found',
-        })
-      }
-    } else {
+  static transform({ json, version }) {
+    if (!version) {
       const latestDate = Object.keys(json.installations).sort().slice(-1)[0]
-      installs = json.installations[latestDate]
+      return { installs: json.installations[latestDate] }
     }
 
-    return this.constructor.render({ label, installs })
+    const installs = json.installationsPerVersion[version]
+    if (!installs) {
+      throw new NotFound({
+        prettyMessage: 'version not found',
+      })
+    }
+    return { installs }
+  }
+
+  async handle({ plugin, version }) {
+    const json = await this.fetch({ plugin, version })
+    const { installs } = this.constructor.transform({ json, version })
+    return this.constructor.render({ installs, version })
   }
 }

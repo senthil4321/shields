@@ -1,14 +1,12 @@
-'use strict'
+import Joi from 'joi'
+import { isSemver } from '../test-validators.js'
+import { ServiceTester } from '../tester.js'
 
-const Joi = require('@hapi/joi')
-const { isSemver } = require('../test-validators')
-const { ServiceTester } = require('../tester')
-
-const t = (module.exports = new ServiceTester({
+export const t = new ServiceTester({
   id: 'GithubRelease',
   title: 'Github Release',
   pathPrefix: '/github',
-}))
+})
 
 t.create('Release')
   .get('/v/release/expressjs/express.json')
@@ -22,13 +20,19 @@ t.create('Prerelease')
     color: Joi.string().allow('blue', 'orange').required(),
   })
 
+// basic query parameter testing. application of param in transform
+// logic is tested via unit tests in github-release.spec.js
+t.create('Release (release name instead of tag name)')
+  .get('/v/release/expressjs/express.json?display_name=release')
+  .expectBadge({ label: 'release', message: isSemver, color: 'blue' })
+
 t.create('Release (No releases)')
   .get('/v/release/badges/daily-tests.json')
   .expectBadge({ label: 'release', message: 'no releases or repo not found' })
 
 t.create('Prerelease (No releases)')
   .get('/v/release/badges/daily-tests.json?include_prereleases')
-  .expectBadge({ label: 'release', message: 'no releases' })
+  .expectBadge({ label: 'release', message: 'no releases found' })
 
 t.create('Release (repo not found)')
   .get('/v/release/badges/helmets.json')
@@ -42,11 +46,11 @@ t.create('Release (legacy route: release)')
 t.create('(pre-)Release (legacy route: release/all)')
   .get('/release/photonstorm/phaser/all.svg')
   .expectRedirect(
-    '/github/v/release/photonstorm/phaser.svg?include_prereleases'
+    '/github/v/release/photonstorm/phaser.svg?include_prereleases',
   )
 
 t.create('(pre-)Release (legacy route: release-pre)')
   .get('/release-pre/photonstorm/phaser.svg')
   .expectRedirect(
-    '/github/v/release/photonstorm/phaser.svg?include_prereleases'
+    '/github/v/release/photonstorm/phaser.svg?include_prereleases',
   )

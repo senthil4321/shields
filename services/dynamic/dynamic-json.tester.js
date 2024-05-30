@@ -1,8 +1,7 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { expect } = require('chai')
-const t = (module.exports = require('../tester').createServiceTester())
+import Joi from 'joi'
+import { expect } from 'chai'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('No URL specified')
   .get('.json?query=$.name&label=Package Name')
@@ -14,7 +13,7 @@ t.create('No URL specified')
 
 t.create('No query specified')
   .get(
-    '.json?url=https://github.com/badges/shields/raw/master/package.json&label=Package Name'
+    '.json?url=https://github.com/badges/shields/raw/master/package.json&label=Package Name',
   )
   .expectBadge({
     label: 'Package Name',
@@ -24,7 +23,7 @@ t.create('No query specified')
 
 t.create('Malformed url')
   .get(
-    '.json?url=https://github.com/badges/shields/raw/master/%0package.json&query=$.name&label=Package Name'
+    '.json?url=https://github.com/badges/shields/raw/master/%0package.json&query=$.name&label=Package Name',
   )
   .expectBadge({
     label: 'Package Name',
@@ -34,7 +33,7 @@ t.create('Malformed url')
 
 t.create('JSON from url')
   .get(
-    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$.name'
+    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$.name',
   )
   .expectBadge({
     label: 'custom badge',
@@ -44,7 +43,7 @@ t.create('JSON from url')
 
 t.create('support uri query parameter')
   .get(
-    '.json?uri=https://github.com/badges/shields/raw/master/package.json&query=$.name'
+    '.json?uri=https://github.com/badges/shields/raw/master/package.json&query=$.name',
   )
   .expectBadge({
     label: 'custom badge',
@@ -54,13 +53,13 @@ t.create('support uri query parameter')
 
 t.create('multiple results')
   .get(
-    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$..keywords[0:2:1]'
+    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$..keywords[0:2:1]',
   )
   .expectBadge({ label: 'custom badge', message: 'GitHub, badge' })
 
 t.create('caching with new query params')
   .get(
-    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$.version'
+    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$.version',
   )
   .expectBadge({
     label: 'custom badge',
@@ -69,7 +68,7 @@ t.create('caching with new query params')
 
 t.create('prefix & suffix & label')
   .get(
-    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$.version&prefix=v&suffix= dev&label=Shields'
+    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$.version&prefix=v&suffix= dev&label=Shields',
   )
   .expectBadge({
     label: 'Shields',
@@ -78,7 +77,7 @@ t.create('prefix & suffix & label')
 
 t.create("key doesn't exist")
   .get(
-    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$.does_not_exist'
+    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$.does_not_exist',
   )
   .expectBadge({
     label: 'custom badge',
@@ -88,7 +87,7 @@ t.create("key doesn't exist")
 
 t.create('invalid url')
   .get(
-    '.json?url=https://github.com/badges/shields/raw/master/notafile.json&query=$.version'
+    '.json?url=https://github.com/badges/shields/raw/master/notafile.json&query=$.version',
   )
   .expectBadge({
     label: 'custom badge',
@@ -98,7 +97,7 @@ t.create('invalid url')
 
 t.create('user color overrides default')
   .get(
-    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$.name&color=10ADED'
+    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$.name&color=10ADED',
   )
   .expectBadge({
     label: 'custom badge',
@@ -108,7 +107,7 @@ t.create('user color overrides default')
 
 t.create('error color overrides default')
   .get(
-    '.json?url=https://github.com/badges/shields/raw/master/notafile.json&query=$.version'
+    '.json?url=https://github.com/badges/shields/raw/master/notafile.json&query=$.version',
   )
   .expectBadge({
     label: 'custom badge',
@@ -133,7 +132,7 @@ t.create('request should set Accept header')
       .reply(200, function (uri, requestBody) {
         headers = this.req.headers
         return '{"name":"test"}'
-      })
+      }),
   )
   .expectBadge({ label: 'custom badge', message: 'test' })
   .after(() => {
@@ -142,7 +141,7 @@ t.create('request should set Accept header')
 
 t.create('query with lexical error')
   .get(
-    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$[?'
+    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$[?',
   )
   .expectBadge({
     label: 'custom badge',
@@ -152,7 +151,7 @@ t.create('query with lexical error')
 
 t.create('query with parse error')
   .get(
-    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$.foo,'
+    '.json?url=https://github.com/badges/shields/raw/master/package.json&query=$.foo,',
   )
   .expectBadge({
     label: 'custom badge',
@@ -166,8 +165,8 @@ const badQuery =
 t.create('query with invalid token')
   .get(
     `.json?url=https://github.com/badges/shields/raw/master/package.json&query=${encodeURIComponent(
-      badQuery
-    )}`
+      badQuery,
+    )}`,
   )
   .expectBadge({
     label: 'custom badge',
@@ -178,7 +177,7 @@ t.create('query with invalid token')
 t.create('JSON contains an array')
   .get('.json?url=https://example.test/json&query=$[0]')
   .intercept(nock =>
-    nock('https://example.test').get('/json').reply(200, '["foo"]')
+    nock('https://example.test').get('/json').reply(200, '["foo"]'),
   )
   .expectBadge({
     label: 'custom badge',
@@ -188,7 +187,7 @@ t.create('JSON contains an array')
 t.create('JSON contains a string')
   .get('.json?url=https://example.test/json&query=$.foo,')
   .intercept(nock =>
-    nock('https://example.test').get('/json').reply(200, '"foo"')
+    nock('https://example.test').get('/json').reply(200, '"foo"'),
   )
   .expectBadge({
     label: 'custom badge',

@@ -1,28 +1,21 @@
-'use strict'
+import { pathParams } from '../index.js'
+import { BaseCpanService, description } from './cpan.js'
 
-const BaseCpanService = require('./cpan')
+export default class CpanLicense extends BaseCpanService {
+  static category = 'license'
+  static route = { base: 'cpan/l', pattern: ':packageName' }
 
-module.exports = class CpanLicense extends BaseCpanService {
-  static get category() {
-    return 'license'
-  }
-
-  static get route() {
-    return {
-      base: 'cpan/l',
-      pattern: ':packageName',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'CPAN',
-        namedParams: { packageName: 'Config-Augeas' },
-        staticPreview: this.render({ license: 'lgpl_2_1' }),
-        keywords: ['perl'],
+  static openApi = {
+    '/cpan/l/{packageName}': {
+      get: {
+        summary: 'CPAN License',
+        description,
+        parameters: pathParams({
+          name: 'packageName',
+          example: 'Config-Augeas',
+        }),
       },
-    ]
+    },
   }
 
   static render({ license }) {

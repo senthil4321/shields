@@ -1,43 +1,38 @@
-'use strict'
-
-const { colorScale } = require('../color-formatters')
-const UptimeRobotBase = require('./uptimerobot-base')
+import { pathParams } from '../index.js'
+import { colorScale } from '../color-formatters.js'
+import UptimeRobotBase from './uptimerobot-base.js'
 
 const ratioColor = colorScale([10, 30, 50, 70])
 
-module.exports = class UptimeRobotRatio extends UptimeRobotBase {
-  static get route() {
-    return {
-      base: 'uptimerobot/ratio',
-      pattern: ':numberOfDays(\\d+)?/:monitorSpecificKey',
-    }
+export default class UptimeRobotRatio extends UptimeRobotBase {
+  static route = {
+    base: 'uptimerobot/ratio',
+    pattern: ':numberOfDays(\\d+)?/:monitorSpecificKey',
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'Uptime Robot ratio (30 days)',
-        pattern: ':monitorSpecificKey',
-        namedParams: {
-          monitorSpecificKey: 'm778918918-3e92c097147760ee39d02d36',
-        },
-        staticPreview: this.render({ ratio: 100 }),
+  static openApi = {
+    '/uptimerobot/ratio/{monitorSpecificKey}': {
+      get: {
+        summary: 'Uptime Robot ratio (30 days)',
+        parameters: pathParams({
+          name: 'monitorSpecificKey',
+          example: 'm778918918-3e92c097147760ee39d02d36',
+        }),
       },
-      {
-        title: 'Uptime Robot ratio (7 days)',
-        pattern: '7/:monitorSpecificKey',
-        namedParams: {
-          monitorSpecificKey: 'm778918918-3e92c097147760ee39d02d36',
-        },
-        staticPreview: this.render({ ratio: 100 }),
+    },
+    '/uptimerobot/ratio/7/{monitorSpecificKey}': {
+      get: {
+        summary: 'Uptime Robot ratio (7 days)',
+        parameters: pathParams({
+          name: 'monitorSpecificKey',
+          example: 'm778918918-3e92c097147760ee39d02d36',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'uptime',
-    }
+  static defaultBadgeData = {
+    label: 'uptime',
   }
 
   static render({ ratio }) {

@@ -1,48 +1,41 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { BaseSvgScrapingService } = require('..')
-const { codacyGrade } = require('./codacy-helpers')
+import Joi from 'joi'
+import { BaseSvgScrapingService, pathParams } from '../index.js'
+import { codacyGrade } from './codacy-helpers.js'
 
 const schema = Joi.object({ message: codacyGrade }).required()
 
-module.exports = class CodacyGrade extends BaseSvgScrapingService {
-  static get category() {
-    return 'analysis'
-  }
+export default class CodacyGrade extends BaseSvgScrapingService {
+  static category = 'analysis'
+  static route = { base: 'codacy/grade', pattern: ':projectId/:branch*' }
 
-  static get route() {
-    return {
-      base: 'codacy/grade',
-      pattern: ':projectId/:branch*',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Codacy grade',
-        pattern: ':projectId',
-        namedParams: { projectId: 'e27821fb6289410b8f58338c7e0bc686' },
-        staticPreview: this.render({ grade: 'A' }),
+  static openApi = {
+    '/codacy/grade/{projectId}': {
+      get: {
+        summary: 'Codacy grade',
+        parameters: pathParams({
+          name: 'projectId',
+          example: '0cb32ce695b743d68257021455330c66',
+        }),
       },
-      {
-        title: 'Codacy branch grade',
-        pattern: ':projectId/:branch',
-        namedParams: {
-          projectId: 'e27821fb6289410b8f58338c7e0bc686',
-          branch: 'master',
-        },
-        staticPreview: this.render({ grade: 'A' }),
+    },
+    '/codacy/grade/{projectId}/{branch}': {
+      get: {
+        summary: 'Codacy grade (branch)',
+        parameters: pathParams(
+          {
+            name: 'projectId',
+            example: '0cb32ce695b743d68257021455330c66',
+          },
+          {
+            name: 'branch',
+            example: 'master',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'code quality',
-    }
-  }
+  static defaultBadgeData = { label: 'code quality' }
 
   static render({ grade }) {
     const color = {
@@ -64,10 +57,10 @@ module.exports = class CodacyGrade extends BaseSvgScrapingService {
     const { message: grade } = await this._requestSvg({
       schema,
       url: `https://api.codacy.com/project/badge/grade/${encodeURIComponent(
-        projectId
+        projectId,
       )}`,
-      options: { qs: { branch } },
-      errorMessages: { 404: 'project or branch not found' },
+      options: { searchParams: { branch } },
+      httpErrors: { 404: 'project or branch not found' },
       valueMatcher: /visibility="hidden">([^<>]+)<\/text>/,
     })
     return this.constructor.render({ grade })

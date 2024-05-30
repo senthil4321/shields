@@ -1,8 +1,7 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { isFormattedDate } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import Joi from 'joi'
+import { isFormattedDate } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('github issue state')
   .get('/issues/detail/state/badges/shields/979.json')
@@ -35,7 +34,7 @@ t.create('github issue label')
     label: 'label',
     message: Joi.equal(
       'bug | developer-experience',
-      'developer-experience | bug'
+      'developer-experience | bug',
     ),
   })
 
@@ -64,4 +63,17 @@ t.create('github pull request merge state (pull request not found)')
   .expectBadge({
     label: 'issue/pull request',
     message: 'issue, pull request or repo not found',
+  })
+
+t.create('github issue milestone')
+  .get('/issues/detail/milestone/badges/shields/4949.json')
+  .expectBadge({
+    label: 'milestone',
+    message: 'badge-maker v3.4',
+  })
+
+t.create('github issue milestone (without milestone)')
+  .get('/issues/detail/milestone/badges/shields/979.json')
+  .expectBadge({
+    message: 'no milestone',
   })

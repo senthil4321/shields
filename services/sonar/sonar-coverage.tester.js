@@ -1,7 +1,6 @@
-'use strict'
-
-const t = (module.exports = require('../tester').createServiceTester())
-const { isIntegerPercentage } = require('../test-validators')
+import { createServiceTester } from '../tester.js'
+import { isIntegerPercentage } from '../test-validators.js'
+export const t = await createServiceTester()
 
 // The service tests targeting the legacy SonarQube API are mocked
 // because of the lack of publicly accessible, self-hosted, legacy SonarQube instances
@@ -16,9 +15,16 @@ t.create('Coverage')
     message: isIntegerPercentage,
   })
 
+t.create('Coverage (branch)')
+  .get('/swellaby%3Aletra/master.json?server=https://sonarcloud.io')
+  .expectBadge({
+    label: 'coverage',
+    message: isIntegerPercentage,
+  })
+
 t.create('Coverage (legacy API supported)')
   .get(
-    '/org.ow2.petals%3Apetals-se-ase.json?server=http://sonar.petalslink.com&sonarVersion=4.2'
+    '/org.ow2.petals%3Apetals-se-ase.json?server=http://sonar.petalslink.com&sonarVersion=4.2',
   )
   .intercept(nock =>
     nock('http://sonar.petalslink.com/api')
@@ -38,7 +44,7 @@ t.create('Coverage (legacy API supported)')
             },
           ],
         },
-      ])
+      ]),
   )
   .expectBadge({
     label: 'coverage',

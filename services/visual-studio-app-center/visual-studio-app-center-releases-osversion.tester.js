@@ -1,6 +1,5 @@
-'use strict'
-
-const t = (module.exports = require('../tester').createServiceTester())
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 // Note:
 // Unfortunately an Invalid user, invalid project, valid API token test is not possible due to the way Microsoft cache their responses.
@@ -9,7 +8,7 @@ const t = (module.exports = require('../tester').createServiceTester())
 t.create('[fixed] Example Release')
   // This application will never have a new release created.
   .get(
-    '/jct/test-fixed-android-react/8c9b519a0750095b9fea3d40b2645d8a0c24a2f3.json'
+    '/jct/test-fixed-android-react/8c9b519a0750095b9fea3d40b2645d8a0c24a2f3.json',
   )
   .expectBadge({
     label: 'android',

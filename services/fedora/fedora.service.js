@@ -1,8 +1,6 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { renderVersionBadge } = require('../version')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import { renderVersionBadge } from '../version.js'
+import { BaseJsonService, pathParams } from '../index.js'
 
 const schema = Joi.object({
   version: Joi.string().required(),
@@ -11,41 +9,50 @@ const schema = Joi.object({
 // No way to permalink to current "stable", https://pagure.io/mdapi/issue/69
 const defaultBranch = 'rawhide'
 
-module.exports = class Fedora extends BaseJsonService {
-  static get category() {
-    return 'version'
-  }
+const description =
+  'See <a href="https://apps.fedoraproject.org/mdapi/">mdapi docs</a> for information on valid branches.'
 
-  static get route() {
-    return {
-      base: 'fedora/v',
-      pattern: ':packageName/:branch?',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Fedora package',
-        namedParams: { packageName: 'rpm', branch: 'rawhide' },
-        staticPreview: renderVersionBadge({ version: '4.14.2.1' }),
-        documentation:
-          'See <a href="https://apps.fedoraproject.org/mdapi/">mdapi docs</a> for information on valid branches.',
+export default class Fedora extends BaseJsonService {
+  static category = 'version'
+  static route = { base: 'fedora/v', pattern: ':packageName/:branch?' }
+  static openApi = {
+    '/fedora/v/{packageName}/{branch}': {
+      get: {
+        summary: 'Fedora package (with branch)',
+        description,
+        parameters: pathParams(
+          {
+            name: 'packageName',
+            example: 'rpm',
+          },
+          {
+            name: 'branch',
+            example: 'rawhide',
+          },
+        ),
       },
-    ]
+    },
+    '/fedora/v/{packageName}': {
+      get: {
+        summary: 'Fedora package',
+        description,
+        parameters: pathParams({
+          name: 'packageName',
+          example: 'rpm',
+        }),
+      },
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'fedora' }
-  }
+  static defaultBadgeData = { label: 'fedora' }
 
   async handle({ packageName, branch = defaultBranch }) {
     const data = await this._requestJson({
       schema,
       url: `https://apps.fedoraproject.org/mdapi/${encodeURIComponent(
-        branch
+        branch,
       )}/pkg/${encodeURIComponent(packageName)}`,
-      errorMessages: {
+      httpErrors: {
         400: 'branch not found',
       },
     })

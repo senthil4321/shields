@@ -1,12 +1,14 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { coveragePercentage } = require('../color-formatters')
-const {
-  ConditionalGithubAuthV3Service,
-} = require('../github/github-auth-service')
-const { fetchJsonFromRepo } = require('../github/github-common-fetch')
-const { InvalidParameter, InvalidResponse, NotFound } = require('..')
+import Joi from 'joi'
+import { coveragePercentage } from '../color-formatters.js'
+import { ConditionalGithubAuthV3Service } from '../github/github-auth-service.js'
+import { fetchJsonFromRepo } from '../github/github-common-fetch.js'
+import {
+  InvalidParameter,
+  InvalidResponse,
+  NotFound,
+  pathParam,
+  queryParam,
+} from '../index.js'
 
 const nycrcSchema = Joi.object({
   branches: Joi.number().min(0).max(100),
@@ -27,52 +29,53 @@ const pkgJSONSchema = Joi.object({
   }).optional(),
 }).required()
 
-const documentation = `<p>
-  Create a code coverage badge, based on thresholds stored in a
-  <a href="https://github.com/istanbuljs/nyc#common-configuration-options">.nycrc config file</a>
-  on GitHub.
-</p>`
+const description = `
+Create a code coverage badge, based on thresholds stored in a
+[.nycrc config file](https://github.com/istanbuljs/nyc#common-configuration-options)
+on GitHub.
+`
 
 const validThresholds = ['branches', 'lines', 'functions']
 
-module.exports = class Nycrc extends ConditionalGithubAuthV3Service {
-  static get category() {
-    return 'coverage'
+export default class Nycrc extends ConditionalGithubAuthV3Service {
+  static category = 'coverage'
+
+  static route = {
+    base: 'nycrc',
+    // TODO: eventually add support for .yml and .yaml:
+    pattern: ':user/:repo',
+    queryParamSchema: Joi.object({
+      config: Joi.string()
+        .regex(/(.*\.nycrc)|(.*\.json$)/)
+        .default('.nycrc'),
+      // Allow the default threshold detection logic to be overridden, .e.g.,
+      // favoring lines over branches:
+      preferredThreshold: Joi.string()
+        .optional()
+        .allow(...validThresholds),
+    }).required(),
   }
 
-  static get route() {
-    return {
-      base: 'nycrc',
-      // TODO: eventually add support for .yml and .yaml:
-      pattern: ':user/:repo',
-      queryParamSchema: Joi.object({
-        config: Joi.string()
-          .regex(/(.*\.nycrc)|(.*\.json$)/)
-          .default('.nycrc'),
-        // Allow the default threshold detection logic to be overridden, .e.g.,
-        // favoring lines over branches:
-        preferredThreshold: Joi.string()
-          .optional()
-          .allow(...validThresholds),
-      }).required(),
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'nycrc config on GitHub',
-        namedParams: { user: 'yargs', repo: 'yargs' },
-        queryParams: { config: '.nycrc', preferredThreshold: 'lines' },
-        staticPreview: this.render({ coverage: 92 }),
-        documentation,
+  static openApi = {
+    '/nycrc/{user}/{repo}': {
+      get: {
+        summary: 'nycrc config on GitHub',
+        description,
+        parameters: [
+          pathParam({ name: 'user', example: 'yargs' }),
+          pathParam({ name: 'repo', example: 'yargs' }),
+          queryParam({ name: 'config', example: '.nycrc' }),
+          queryParam({
+            name: 'preferredThreshold',
+            example: 'lines',
+            schema: { type: 'string', enum: validThresholds },
+          }),
+        ],
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'min coverage' }
-  }
+  static defaultBadgeData = { label: 'min coverage' }
 
   static render({ coverage }) {
     return {
@@ -86,7 +89,8 @@ module.exports = class Nycrc extends ConditionalGithubAuthV3Service {
     if (preferredThreshold) {
       if (!validThresholds.includes(preferredThreshold)) {
         throw new InvalidParameter({
-          prettyMessage: `threshold must be "branches", "lines", or "functions"`,
+          prettyMessage:
+            'threshold must be "branches", "lines", or "functions"',
         })
       }
       if (!config[preferredThreshold]) {
@@ -114,7 +118,7 @@ module.exports = class Nycrc extends ConditionalGithubAuthV3Service {
         schema: pkgJSONSchema,
         user,
         repo,
-        branch: 'master',
+        branch: 'HEAD',
         filename: config,
       })
       const nycConfig = pkgJson.c8 || pkgJson.nyc
@@ -131,10 +135,10 @@ module.exports = class Nycrc extends ConditionalGithubAuthV3Service {
           schema: nycrcSchema,
           user,
           repo,
-          branch: 'master',
+          branch: 'HEAD',
           filename: config,
         }),
-        preferredThreshold
+        preferredThreshold,
       )
     }
     return this.constructor.render({ coverage })

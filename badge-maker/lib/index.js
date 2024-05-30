@@ -32,7 +32,7 @@ function _validate(format) {
   ]
   if ('style' in format && !styleValues.includes(format.style)) {
     throw new ValidationError(
-      `Field \`style\` must be one of (${styleValues.toString()})`
+      `Field \`style\` must be one of (${styleValues.toString()})`,
     )
   }
 }
@@ -46,19 +46,13 @@ function _clean(format) {
       cleaned[key] = format[key]
     } else {
       throw new ValidationError(
-        `Unexpected field '${key}'. Allowed values are (${expectedKeys.toString()})`
+        `Unexpected field '${key}'. Allowed values are (${expectedKeys.toString()})`,
       )
     }
   })
 
-  // convert "public" format to "internal" format
-  cleaned.text = [cleaned.label || '', cleaned.message]
-  delete cleaned.label
-  delete cleaned.message
-  if ('style' in cleaned) {
-    cleaned.template = cleaned.style
-    delete cleaned.style
-  }
+  // Legacy.
+  cleaned.label = cleaned.label || ''
 
   return cleaned
 }

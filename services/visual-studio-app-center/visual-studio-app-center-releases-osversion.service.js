@@ -1,61 +1,65 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const {
+import Joi from 'joi'
+import { pathParams } from '../index.js'
+import {
   BaseVisualStudioAppCenterService,
-  keywords,
-  documentation,
-} = require('./visual-studio-app-center-base')
+  description,
+} from './visual-studio-app-center-base.js'
 
 const schema = Joi.object({
   app_os: Joi.string().required(),
   min_os: Joi.string().required(),
 }).required()
 
-module.exports = class VisualStudioAppCenterReleasesOSVersion extends BaseVisualStudioAppCenterService {
-  static get category() {
-    return 'version'
+export default class VisualStudioAppCenterReleasesOSVersion extends BaseVisualStudioAppCenterService {
+  static category = 'version'
+
+  static route = {
+    base: 'visual-studio-app-center/releases/osver',
+    pattern: ':owner/:app/:token',
   }
 
-  static get route() {
-    return {
-      base: 'visual-studio-app-center/releases/osver',
-      pattern: ':owner/:app/:token',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Visual Studio App Center (Minimum) OS Version',
-        namedParams: {
-          owner: 'jct',
-          app: 'my-amazing-app',
-          token: 'ac70cv...',
-        },
-        staticPreview: this.render({ min_os: '4.1', app_os: 'Android' }),
-        keywords,
-        documentation,
+  static openApi = {
+    '/visual-studio-app-center/releases/osver/{owner}/{app}/{token}': {
+      get: {
+        summary: 'Visual Studio App Center (Minimum) OS Version',
+        description,
+        parameters: pathParams(
+          {
+            name: 'owner',
+            example: 'jct',
+          },
+          {
+            name: 'app',
+            example: 'my-amazing-app',
+          },
+          {
+            name: 'token',
+            example: 'ac70cv...',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'min version',
-      color: 'blue',
-    }
+  static defaultBadgeData = {
+    label: 'min version',
+    color: 'blue',
   }
 
-  static render({ app_os, min_os }) {
+  static render({ appOS, minOS }) {
     return {
-      label: `${app_os.toLowerCase()}`,
-      message: `${min_os}+`,
+      label: `${appOS.toLowerCase()}`,
+      message: `${minOS}+`,
     }
   }
 
   async handle({ owner, app, token }) {
-    const { app_os, min_os } = await this.fetch({ owner, app, token, schema })
-    return this.constructor.render({ app_os, min_os })
+    const { app_os: appOS, min_os: minOS } = await this.fetch({
+      owner,
+      app,
+      token,
+      schema,
+    })
+    return this.constructor.render({ appOS, minOS })
   }
 }

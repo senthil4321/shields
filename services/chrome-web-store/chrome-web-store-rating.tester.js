@@ -1,14 +1,13 @@
-'use strict'
+import Joi from 'joi'
+import { Agent, MockAgent, setGlobalDispatcher } from 'undici'
+import { isStarRating } from '../test-validators.js'
+import { ServiceTester } from '../tester.js'
 
-const Joi = require('@hapi/joi')
-const { isStarRating } = require('../test-validators')
-const { ServiceTester } = require('../tester')
-
-const t = (module.exports = new ServiceTester({
+export const t = new ServiceTester({
   id: 'ChromeWebStoreRating',
   title: 'Chrome Web Store Rating',
   pathPrefix: '/chrome-web-store',
-}))
+})
 
 t.create('Rating')
   .get('/rating/alhjnofcnnpeaphgeakdhkebafjcpeae.json')
@@ -41,7 +40,16 @@ t.create('Stars (not found)')
   .expectBadge({ label: 'rating', message: 'not found' })
 
 // Keep this "inaccessible" test, since this service does not use BaseService#_request.
+const mockAgent = new MockAgent()
 t.create('Rating (inaccessible)')
   .get('/rating/alhjnofcnnpeaphgeakdhkebafjcpeae.json')
-  .networkOff()
+  // webextension-store-meta uses undici internally, so we can't mock it with nock
+  .before(function () {
+    setGlobalDispatcher(mockAgent)
+    mockAgent.disableNetConnect()
+  })
+  .after(async function () {
+    await mockAgent.close()
+    setGlobalDispatcher(new Agent())
+  })
   .expectBadge({ label: 'rating', message: 'inaccessible' })

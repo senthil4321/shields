@@ -1,11 +1,9 @@
-'use strict'
-
-const { expect } = require('chai')
-const nock = require('nock')
-const { test, forCases, given } = require('sazerac')
-const { renderBuildStatusBadge } = require('../build-status')
-const { cleanUpNockAfterEach, defaultContext } = require('../test-helpers')
-const JenkinsBuild = require('./jenkins-build.service')
+import { expect } from 'chai'
+import nock from 'nock'
+import { test, forCases, given } from 'sazerac'
+import { renderBuildStatusBadge } from '../build-status.js'
+import { cleanUpNockAfterEach, defaultContext } from '../test-helpers.js'
+import JenkinsBuild from './jenkins-build.service.js'
 
 describe('JenkinsBuild', function () {
   test(JenkinsBuild.prototype.transform, () => {
@@ -45,16 +43,16 @@ describe('JenkinsBuild', function () {
       color: 'yellow',
     })
     given({ status: 'passing' }).expect(
-      renderBuildStatusBadge({ status: 'passing' })
+      renderBuildStatusBadge({ status: 'passing' }),
     )
     given({ status: 'failing' }).expect(
-      renderBuildStatusBadge({ status: 'failing' })
+      renderBuildStatusBadge({ status: 'failing' }),
     )
     given({ status: 'building' }).expect(
-      renderBuildStatusBadge({ status: 'building' })
+      renderBuildStatusBadge({ status: 'building' }),
     )
     given({ status: 'not built' }).expect(
-      renderBuildStatusBadge({ status: 'not built' })
+      renderBuildStatusBadge({ status: 'not built' }),
     )
   })
 
@@ -93,8 +91,8 @@ describe('JenkinsBuild', function () {
           {
             jobUrl:
               'https://jenkins.ubuntu.com/server/job/curtin-vmtest-daily-x',
-          }
-        )
+          },
+        ),
       ).to.deep.equal({
         label: undefined,
         message: 'passing',

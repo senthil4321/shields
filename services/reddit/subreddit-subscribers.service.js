@@ -1,9 +1,7 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { optionalNonNegativeInteger } = require('../validators')
-const { metric } = require('../text-formatters')
-const { BaseJsonService, NotFound } = require('..')
+import Joi from 'joi'
+import { optionalNonNegativeInteger } from '../validators.js'
+import { metric } from '../text-formatters.js'
+import { BaseJsonService, NotFound, pathParams } from '../index.js'
 
 const schema = Joi.object({
   data: Joi.object({
@@ -11,44 +9,38 @@ const schema = Joi.object({
   }).required(),
 }).required()
 
-module.exports = class SubredditSubscribers extends BaseJsonService {
-  static get category() {
-    return 'social'
+export default class RedditSubredditSubscribers extends BaseJsonService {
+  static category = 'social'
+
+  static route = {
+    base: 'reddit/subreddit-subscribers',
+    pattern: ':subreddit',
   }
 
-  static get route() {
-    return {
-      base: 'reddit/subreddit-subscribers',
-      pattern: ':subreddit',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Subreddit subscribers',
-        namedParams: { subreddit: 'drums' },
-        staticPreview: {
-          label: 'follow r/drums',
-          message: '77k',
-          color: 'red',
-          style: 'social',
-        },
+  static openApi = {
+    '/reddit/subreddit-subscribers/{subreddit}': {
+      get: {
+        summary: 'Subreddit subscribers',
+        parameters: pathParams({
+          name: 'subreddit',
+          example: 'drums',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'reddit',
-      namedLogo: 'reddit',
-    }
+  static _cacheLength = 7200
+
+  static defaultBadgeData = {
+    label: 'reddit',
+    namedLogo: 'reddit',
   }
 
   static render({ subreddit, subscribers }) {
     return {
       label: `follow r/${subreddit}`,
       message: metric(subscribers),
+      style: 'social',
       color: 'red',
       link: [`https://www.reddit.com/r/${subreddit}`],
     }
@@ -58,8 +50,9 @@ module.exports = class SubredditSubscribers extends BaseJsonService {
     return this._requestJson({
       schema,
       url: `https://www.reddit.com/r/${subreddit}/about.json`,
-      errorMessages: {
+      httpErrors: {
         404: 'subreddit not found',
+        403: 'subreddit is private',
       },
     })
   }

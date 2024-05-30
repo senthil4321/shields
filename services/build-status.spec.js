@@ -1,8 +1,6 @@
-'use strict'
-
-const { expect } = require('chai')
-const { test, given, forCases } = require('sazerac')
-const { renderBuildStatusBadge } = require('./build-status')
+import { expect } from 'chai'
+import { test, given, forCases } from 'sazerac'
+import { renderBuildStatusBadge } from './build-status.js'
 
 test(renderBuildStatusBadge, () => {
   given({ label: 'build', status: 'passed' }).expect({
@@ -41,7 +39,7 @@ test(renderBuildStatusBadge, () => {
     given({ status: 'success' }),
     given({ status: 'successful' }),
   ]).assert('should be brightgreen', b =>
-    expect(b).to.include({ color: 'brightgreen' })
+    expect(b).to.include({ color: 'brightgreen' }),
   )
 })
 
@@ -55,7 +53,9 @@ test(renderBuildStatusBadge, () => {
 
 test(renderBuildStatusBadge, () => {
   forCases([
+    given({ status: 'broken' }),
     given({ status: 'error' }),
+    given({ status: 'errored' }),
     given({ status: 'failed' }),
     given({ status: 'failing' }),
     given({ status: 'failure' }),
@@ -85,6 +85,6 @@ test(renderBuildStatusBadge, () => {
     given({ status: 'testing' }),
     given({ status: 'waiting' }),
   ]).assert('should have undefined color', b =>
-    expect(b).to.include({ color: undefined })
+    expect(b).to.include({ color: undefined }),
   )
 })

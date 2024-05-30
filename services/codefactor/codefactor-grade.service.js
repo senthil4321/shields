@@ -1,45 +1,66 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { BaseSvgScrapingService } = require('..')
-const { isValidGrade, gradeColor } = require('./codefactor-helpers')
+import Joi from 'joi'
+import { BaseSvgScrapingService, pathParams } from '../index.js'
+import { isValidGrade, gradeColor } from './codefactor-helpers.js'
 
 const schema = Joi.object({
   message: isValidGrade,
 }).required()
 
-module.exports = class CodeFactorGrade extends BaseSvgScrapingService {
-  static get category() {
-    return 'analysis'
+export default class CodeFactorGrade extends BaseSvgScrapingService {
+  static category = 'analysis'
+  static route = {
+    base: 'codefactor/grade',
+    pattern: ':vcsType(github|bitbucket)/:user/:repo/:branch*',
   }
 
-  static get route() {
-    return {
-      base: 'codefactor/grade',
-      pattern: ':vcsType(github|bitbucket)/:user/:repo/:branch*',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'CodeFactor Grade',
-        namedParams: {
-          vcsType: 'github',
-          user: 'pallets',
-          repo: 'flask',
-          branch: 'master',
-        },
-        staticPreview: this.render({ grade: 'B+' }),
+  static openApi = {
+    '/codefactor/grade/{vcsType}/{user}/{repo}/{branch}': {
+      get: {
+        summary: 'CodeFactor Grade (with branch)',
+        parameters: pathParams(
+          {
+            name: 'vcsType',
+            example: 'github',
+            schema: { type: 'string', enum: this.getEnum('vcsType') },
+          },
+          {
+            name: 'user',
+            example: 'microsoft',
+          },
+          {
+            name: 'repo',
+            example: 'powertoys',
+          },
+          {
+            name: 'branch',
+            example: 'main',
+          },
+        ),
       },
-    ]
+    },
+    '/codefactor/grade/{vcsType}/{user}/{repo}': {
+      get: {
+        summary: 'CodeFactor Grade',
+        parameters: pathParams(
+          {
+            name: 'vcsType',
+            example: 'github',
+            schema: { type: 'string', enum: this.getEnum('vcsType') },
+          },
+          {
+            name: 'user',
+            example: 'microsoft',
+          },
+          {
+            name: 'repo',
+            example: 'powertoys',
+          },
+        ),
+      },
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'code quality',
-    }
-  }
+  static defaultBadgeData = { label: 'code quality' }
 
   static render({ grade }) {
     return {
@@ -54,7 +75,7 @@ module.exports = class CodeFactorGrade extends BaseSvgScrapingService {
       url: `https://codefactor.io/repository/${vcsType}/${user}/${repo}/badge/${
         branch || ''
       }`,
-      errorMessages: { 404: 'repo or branch not found' },
+      httpErrors: { 404: 'repo or branch not found' },
     })
     return this.constructor.render({ grade: message })
   }

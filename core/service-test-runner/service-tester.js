@@ -1,14 +1,13 @@
-'use strict'
 /**
  * @module
  */
 
-const emojic = require('emojic')
-const trace = require('../base-service/trace')
-const frisby = require('./icedfrisby-shields')(
-  // eslint-disable-next-line import/order
-  require('icedfrisby-nock')(require('icedfrisby'))
-)
+import emojic from 'emojic'
+import icedfrisbyNockModule from 'icedfrisby-nock'
+import icedfrisbyModule from 'icedfrisby'
+import trace from '../base-service/trace.js'
+import icedfrisbyShieldsModule from './icedfrisby-shields.js'
+const frisby = icedfrisbyShieldsModule(icedfrisbyNockModule(icedfrisbyModule))
 
 /**
  * Encapsulate a suite of tests. Create new tests using create() and register
@@ -25,7 +24,7 @@ class ServiceTester {
    *    Specifies which tests to run from the CLI or pull requests
    * @param {string} attrs.title
    *    Prints in the Mocha output
-   * @param {string} attrs.path
+   * @param {string} attrs.pathPrefix
    *    Prefix which is automatically prepended to each tested URI.
    *    The default is `/${attrs.id}`.
    */
@@ -84,7 +83,7 @@ class ServiceTester {
       .before(() => {
         this.beforeEach()
       })
-      // eslint-disable-next-line mocha/prefer-arrow-callback
+      // eslint-disable-next-line mocha/prefer-arrow-callback, promise/prefer-await-to-then
       .finally(function () {
         // `this` is the IcedFrisby instance.
         let responseBody
@@ -119,7 +118,7 @@ class ServiceTester {
    * @param {number} attrs.retry.count number of times to retry test
    * @param {number} attrs.retry.backoff number of milliseconds to add to the wait between each retry
    */
-  toss({ baseUrl, skipIntercepted, retry }) {
+  toss({ baseUrl, skipIntercepted, retry: { count, backoff } }) {
     const { specs, pathPrefix } = this
     const testerBaseUrl = `${baseUrl}${pathPrefix}`
 
@@ -132,7 +131,7 @@ class ServiceTester {
         }`
         if (!skipIntercepted || !spec.intercepted) {
           spec.baseUri(testerBaseUrl)
-          spec.retry(retry.count, retry.backoff)
+          spec.retry(count, backoff)
           spec.toss()
         }
       })
@@ -140,4 +139,4 @@ class ServiceTester {
   }
 }
 
-module.exports = ServiceTester
+export default ServiceTester

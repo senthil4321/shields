@@ -1,25 +1,16 @@
-'use strict'
+import gql from 'graphql-tag'
+import { mergeQueries } from '../../core/base-service/graphql.js'
+import { BaseGraphqlService, BaseJsonService } from '../index.js'
 
-const gql = require('graphql-tag')
-const { mergeQueries } = require('../../core/base-service/graphql')
-const { BaseGraphqlService, BaseJsonService } = require('..')
-const { staticAuthConfigured } = require('./github-helpers')
-
-function createRequestFetcher(context, config) {
-  const { sendAndCacheRequestWithCallbacks, githubApiProvider } = context
-
-  return async (url, options) =>
-    githubApiProvider.requestAsPromise(
-      sendAndCacheRequestWithCallbacks,
-      url,
-      options
-    )
+function createRequestFetcher(context) {
+  const { requestFetcher, githubApiProvider } = context
+  return githubApiProvider.fetch.bind(githubApiProvider, requestFetcher)
 }
 
 class GithubAuthV3Service extends BaseJsonService {
   constructor(context, config) {
     super(context, config)
-    this._requestFetcher = createRequestFetcher(context, config)
+    this._requestFetcher = createRequestFetcher(context)
     this.staticAuthConfigured = true
   }
 }
@@ -32,8 +23,8 @@ class GithubAuthV3Service extends BaseJsonService {
 class ConditionalGithubAuthV3Service extends BaseJsonService {
   constructor(context, config) {
     super(context, config)
-    if (staticAuthConfigured()) {
-      this._requestFetcher = createRequestFetcher(context, config)
+    if (context.githubApiProvider.globalToken) {
+      this._requestFetcher = createRequestFetcher(context)
       this.staticAuthConfigured = true
     } else {
       this.staticAuthConfigured = false
@@ -44,12 +35,12 @@ class ConditionalGithubAuthV3Service extends BaseJsonService {
 class GithubAuthV4Service extends BaseGraphqlService {
   constructor(context, config) {
     super(context, config)
-    this._requestFetcher = createRequestFetcher(context, config)
+    this._requestFetcher = createRequestFetcher(context)
     this.staticAuthConfigured = true
   }
 
   async _requestGraphql(attrs) {
-    const url = `/graphql`
+    const url = '/graphql'
 
     /*
     The Github v4 API requires us to query the rateLimit object to return
@@ -69,10 +60,17 @@ class GithubAuthV4Service extends BaseGraphqlService {
             resetAt
           }
         }
-      `
+      `,
     )
 
-    return super._requestGraphql({ ...attrs, ...{ url, query } })
+    return super._requestGraphql({
+      ...attrs,
+      ...{
+        url,
+        query,
+        httpErrorMessages: { 401: 'auth required for graphql api' },
+      },
+    })
   }
 }
 
@@ -90,7 +88,7 @@ All other things being equal, a graphql query will almost always be a smaller
 number of bytes over the wire and a smaller/simpler object to parse.
 */
 
-module.exports = {
+export {
   GithubAuthV3Service,
   ConditionalGithubAuthV3Service,
   GithubAuthV4Service,

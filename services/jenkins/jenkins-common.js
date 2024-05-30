@@ -1,12 +1,7 @@
-'use strict'
+import Joi from 'joi'
+import { optionalUrl } from '../validators.js'
 
-const Joi = require('@hapi/joi')
-const { optionalUrl } = require('../validators')
-
-const queryParamSchema = Joi.object({
-  disableStrictSSL: Joi.equal(''),
-  jobUrl: optionalUrl,
-}).required()
+const queryParamSchema = Joi.object({ jobUrl: optionalUrl }).required()
 
 const buildRedirectUrl = ({ protocol, host, job }) => {
   const jobPrefix = job.indexOf('/') > -1 ? '' : 'job/'
@@ -21,9 +16,5 @@ const buildUrl = ({ jobUrl, lastCompletedBuild = true, plugin }) => {
   return `${jobUrl}/${lastCompletedBuildElement}${pluginElement}api/json`
 }
 
-module.exports = {
-  queryParamSchema,
-  buildTreeParamQueryString: tree => ({ tree }),
-  buildUrl,
-  buildRedirectUrl,
-}
+export { queryParamSchema, buildUrl, buildRedirectUrl }
+export const buildTreeParamQueryString = tree => ({ tree })

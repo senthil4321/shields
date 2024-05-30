@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://raw.githubusercontent.com/badges/shields/master/frontend/images/logo.svg?sanitize=true"
+    <img src="https://raw.githubusercontent.com/badges/shields/master/readme-logo.svg?sanitize=true"
         height="130">
 </p>
 <p align="center">
@@ -19,18 +19,9 @@
     <a href="https://coveralls.io/github/badges/shields">
         <img src="https://img.shields.io/coveralls/github/badges/shields"
             alt="coverage"></a>
-    <a href="https://lgtm.com/projects/g/badges/shields/alerts/">
-        <img src="https://img.shields.io/lgtm/alerts/g/badges/shields"
-            alt="Total alerts"/></a>
-    <a href="https://github.com/badges/shields/compare/gh-pages...master">
-        <img src="https://img.shields.io/github/commits-since/badges/shields/gh-pages?label=commits%20to%20be%20deployed"
-            alt="commits to be deployed"></a>
     <a href="https://discord.gg/HjJCwm5">
         <img src="https://img.shields.io/discord/308323056592486420?logo=discord"
             alt="chat on Discord"></a>
-    <a href="https://twitter.com/intent/follow?screen_name=shields_io">
-        <img src="https://img.shields.io/twitter/follow/shields_io?style=social&logo=twitter"
-            alt="follow on Twitter"></a>
 </p>
 
 This is home to [Shields.io][shields.io], a service for concise, consistent,
@@ -38,7 +29,13 @@ and legible badges in SVG and raster format, which can easily be included in
 GitHub readmes or any other web page. The service supports dozens of
 continuous integration services, package registries, distributions, app
 stores, social networks, code coverage services, and code analysis services.
-Every month it serves over 470 million images.
+Every month it serves over 1.6 billion images and is used by some of the
+world's most popular open-source projects, [VS Code][vscode], [Vue.js][vue]
+and [Bootstrap][bootstrap] to name a few.
+
+[vscode]: https://github.com/Microsoft/vscode
+[vue]: https://github.com/vuejs/vue
+[bootstrap]: https://github.com/twbs/bootstrap
 
 This repo hosts:
 
@@ -70,9 +67,13 @@ This repo hosts:
 [Make your own badges!][custom badges]
 (Quick example: `https://img.shields.io/badge/left-right-f39f37`)
 
-Browse a [complete list of badges][shields.io].
+[custom badges]: https://img.shields.io/badges/static-badge
 
-[custom badges]: http://shields.io/#your-badge
+### Quickstart
+
+Browse a [complete list of badges][shields.io] and locate a particular badge by using the search bar or by browsing the categories. Click on the badge to fill in required data elements for that badge type (like your username or repo) and optionally customize (label, colors etc.). And it's ready for use!
+
+Use the button at the bottom to copy your badge url or snippet, which can then be added to places like your GitHub readme files or other web pages.
 
 ## Contributing
 
@@ -82,20 +83,23 @@ and pull requests! You can peruse the [contributing guidelines][contributing].
 When adding or changing a service [please add tests][service-tests].
 
 This project has quite a backlog of suggestions! If you're new to the project,
-maybe you'd like to open a pull request to address one of them:
-
-[![GitHub issues by-label](https://img.shields.io/github/issues/badges/shields/good%20first%20issue)](https://github.com/badges/shields/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+maybe you'd like to open a pull request to address one of them.
 
 You can read a [tutorial on how to add a badge][tutorial].
 
+[![GitHub issues by-label](https://img.shields.io/github/issues/badges/shields/good%20first%20issue)](https://github.com/badges/shields/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+
+If you intend on reporting or contributing a fix related to security vulnerabilities, please first refer to our [security policy][security].
+
 [service-tests]: https://github.com/badges/shields/blob/master/doc/service-tests.md
-[tutorial]: doc/TUTORIAL.md
-[contributing]: CONTRIBUTING.md
+[tutorial]: https://github.com/badges/shields/blob/master/doc/TUTORIAL.md
+[contributing]: https://github.com/badges/shields/blob/master/CONTRIBUTING.md
+[security]: https://github.com/badges/shields/blob/master/SECURITY.md
 
 ## Development
 
-1. Install Node 8 or later. You can use the [package manager][] of your choice.
-   Tests need to pass in Node 8 and 10.
+1. Install Node 20 or later. You can use the [package manager][] of your choice.
+   Tests need to pass in Node 20 and 22.
 2. Clone this repository.
 3. Run `npm ci` to install the dependencies.
 4. Run `npm start` to start the badge server and the frontend dev server.
@@ -103,9 +107,9 @@ You can read a [tutorial on how to add a badge][tutorial].
 
 When server source files change, the badge server should automatically restart
 itself (using [nodemon][]). When the frontend files change, the frontend dev
-server (`gatsby dev`) should also automatically reload. However the badge
+server (`docusaurus start`) should also automatically reload. However the badge
 definitions are built only before the server first starts. To regenerate those,
-either run `npm run defs` or manually restart the server.
+either run `npm run prestart` or manually restart the server.
 
 To debug a badge from the command line, run `npm run badge -- /npm/v/nock`.
 It also works with full URLs like
@@ -124,8 +128,8 @@ Please report any Gitpod bugs, questions, or suggestions in issue
 
 [Snapshot tests][] ensure we don't inadvertently make changes that affect the
 SVG or JSON output. When deliberately changing the output, run
-`SNAPSHOT_DRY=1 npm run test:js:server` to preview changes to the saved
-snapshots, and `SNAPSHOT_UPDATE=1 npm run test:js:server` to update them.
+`SNAPSHOT_DRY=1 npm run test:package` to preview changes to the saved
+snapshots, and `SNAPSHOT_UPDATE=1 npm run test:package` to update them.
 
 The server can be configured to use [Sentry][] ([configuration][sentry configuration]) and [Prometheus][] ([configuration][prometheus configuration]).
 
@@ -135,9 +139,9 @@ Daily tests, including a full run of the service tests and overall code coverage
 [gitpod]: https://www.gitpod.io/
 [snapshot tests]: https://glebbahmutov.com/blog/snapshot-testing/
 [prometheus]: https://prometheus.io/
-[prometheus configuration]: doc/self-hosting.md#prometheus
+[prometheus configuration]: https://github.com/badges/shields/blob/master/doc/self-hosting.md#prometheus
 [sentry]: https://sentry.io/
-[sentry configuration]: doc/self-hosting.md#sentry
+[sentry configuration]: https://github.com/badges/shields/blob/master/doc/self-hosting.md#sentry
 [daily-tests]: https://github.com/badges/daily-tests
 [nodemon]: https://nodemon.io/
 [nodemon debug]: https://github.com/Microsoft/vscode-recipes/tree/master/nodemon
@@ -147,7 +151,22 @@ Daily tests, including a full run of the service tests and overall code coverage
 
 There is documentation about [hosting your own server][self-hosting].
 
-[self-hosting]: doc/self-hosting.md
+[self-hosting]: https://github.com/badges/shields/blob/master/doc/self-hosting.md
+
+## Related projects
+
+[![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
+
+Status badges are used widely across open-source and private software projects.
+Academics have studied the "signal" badges provide about software project
+quality. There are many existing libraries for rendering these badges, and
+alternatives to the hosted Shields badge service. [awesome-badges][] is a
+curated collection of such resources.
+[Contributions][contributing to awesome-badges] may be considered there.
+(The presence of a project in that collection should not be interpreted as an endorsement nor promotion from the Shields project)
+
+[awesome-badges]: https://github.com/badges/awesome-badges
+[contributing to awesome-badges]: https://github.com/badges/awesome-badges/blob/main/CONTRIBUTING.md
 
 ## History
 
@@ -172,8 +191,8 @@ You can read more about [the project's inception][thread],
 [olivierlacan]: https://github.com/olivierlacan
 [espadrine]: https://github.com/espadrine
 [old-gh-badges]: https://github.com/badges/gh-badges
-[motivation]: spec/motivation.md
-[spec]: spec/SPECIFICATION.md
+[motivation]: https://github.com/badges/shields/blob/master/spec/motivation.md
+[spec]: https://github.com/badges/shields/blob/master/spec/SPECIFICATION.md
 [thread]: https://github.com/h5bp/lazyweb-requests/issues/150
 
 ## Project leaders
@@ -183,7 +202,6 @@ Maintainers:
 - [calebcartwright](https://github.com/calebcartwright) (core team)
 - [chris48s](https://github.com/chris48s) (core team)
 - [Daniel15](https://github.com/Daniel15) (core team)
-- [espadrine](https://github.com/espadrine) (core team)
 - [paulmelnikow](https://github.com/paulmelnikow) (core team)
 - [platan](https://github.com/platan) (core team)
 - [PyvesB](https://github.com/PyvesB) (core team)
@@ -191,20 +209,15 @@ Maintainers:
 
 Operations:
 
-- [espadrine](https://github.com/espadrine) (sysadmin)
-- [paulmelnikow](https://github.com/paulmelnikow) (limited access)
+- [calebcartwright](https://github.com/calebcartwright)
+- [chris48s](https://github.com/chris48s)
+- [paulmelnikow](https://github.com/paulmelnikow)
+- [PyvesB](https://github.com/PyvesB)
 
 Alumni:
 
+- [espadrine](https://github.com/espadrine)
 - [olivierlacan](https://github.com/olivierlacan)
-
-## Related projects
-
-- [badgerbadgerbadger gem][gem]
-- [pybadges python library][pybadges]
-
-[gem]: https://github.com/badges/badgerbadgerbadger
-[pybadges]: https://github.com/google/pybadges
 
 ## License
 
@@ -214,28 +227,6 @@ domain unless specified otherwise.
 The assets in `logo/` are trademarks of their respective companies and are
 under their terms and license.
 
-## Contributors
+## Community
 
-This project exists thanks to all the people who contribute. [[Contribute](CONTRIBUTING.md)].
-<a href="https://github.com/badges/shields/graphs/contributors"><img src="https://opencollective.com/shields/contributors.svg?width=890" /></a>
-
-## Backers
-
-Thank you to all our backers! 🙏 [[Become a backer](https://opencollective.com/shields#backer)]
-
-<a href="https://opencollective.com/shields#backers" target="_blank"><img src="https://opencollective.com/shields/backers.svg?width=890"></a>
-
-## Sponsors
-
-Support this project by becoming a sponsor. Your logo will show up here with a link to your website. [[Become a sponsor](https://opencollective.com/shields#sponsor)]
-
-<a href="https://opencollective.com/shields/sponsor/0/website" target="_blank"><img src="https://opencollective.com/shields/sponsor/0/avatar.svg"></a>
-<a href="https://opencollective.com/shields/sponsor/1/website" target="_blank"><img src="https://opencollective.com/shields/sponsor/1/avatar.svg"></a>
-<a href="https://opencollective.com/shields/sponsor/2/website" target="_blank"><img src="https://opencollective.com/shields/sponsor/2/avatar.svg"></a>
-<a href="https://opencollective.com/shields/sponsor/3/website" target="_blank"><img src="https://opencollective.com/shields/sponsor/3/avatar.svg"></a>
-<a href="https://opencollective.com/shields/sponsor/4/website" target="_blank"><img src="https://opencollective.com/shields/sponsor/4/avatar.svg"></a>
-<a href="https://opencollective.com/shields/sponsor/5/website" target="_blank"><img src="https://opencollective.com/shields/sponsor/5/avatar.svg"></a>
-<a href="https://opencollective.com/shields/sponsor/6/website" target="_blank"><img src="https://opencollective.com/shields/sponsor/6/avatar.svg"></a>
-<a href="https://opencollective.com/shields/sponsor/7/website" target="_blank"><img src="https://opencollective.com/shields/sponsor/7/avatar.svg"></a>
-<a href="https://opencollective.com/shields/sponsor/8/website" target="_blank"><img src="https://opencollective.com/shields/sponsor/8/avatar.svg"></a>
-<a href="https://opencollective.com/shields/sponsor/9/website" target="_blank"><img src="https://opencollective.com/shields/sponsor/9/avatar.svg"></a>
+Thanks to the people and companies who donate money, services or time to keep the project running. [https://shields.io/community](https://shields.io/community)

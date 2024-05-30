@@ -1,11 +1,9 @@
-'use strict'
-
-const { URL } = require('url')
-const Joi = require('@hapi/joi')
-const { errorMessages } = require('../dynamic-common')
-const { optionalUrl } = require('../validators')
-const { fetchEndpointData } = require('../endpoint-common')
-const { BaseJsonService, InvalidParameter } = require('..')
+import { URL } from 'url'
+import Joi from 'joi'
+import { httpErrors } from '../dynamic-common.js'
+import { optionalUrl } from '../validators.js'
+import { fetchEndpointData } from '../endpoint-common.js'
+import { BaseJsonService, InvalidParameter, queryParams } from '../index.js'
 
 const blockedDomains = ['github.com', 'shields.io']
 
@@ -13,28 +11,141 @@ const queryParamSchema = Joi.object({
   url: optionalUrl.required(),
 }).required()
 
-module.exports = class Endpoint extends BaseJsonService {
-  static get category() {
-    return 'dynamic'
+const description = `
+Using the endpoint badge, you can provide content for a badge through
+a JSON endpoint. The content can be prerendered, or generated on the
+fly. To strike a balance between responsiveness and bandwidth
+utilization on one hand, and freshness on the other, cache behavior is
+configurable, subject to the Shields minimum. The endpoint URL is
+provided to Shields through the query string. Shields fetches it and
+formats the badge.
+
+The endpoint badge takes a single required query param: <code>url</code>, which is the URL to your JSON endpoint
+
+<div>
+  <h2>Example JSON Endpoint Response</h2>
+  <code>&#123; "schemaVersion": 1, "label": "hello", "message": "sweet world", "color": "orange" &#125;</code>
+  <h2>Example Shields Response</h2>
+  <img src="https://img.shields.io/badge/hello-sweet_world-orange" />
+</div>
+<div>
+  <h2>Schema</h2>
+  <table>
+    <tbody>
+      <tr>
+        <th>Property</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td><code>schemaVersion</code></td>
+        <td>Required. Always the number <code>1</code>.</td>
+      </tr>
+      <tr>
+        <td><code>label</code></td>
+        <td>
+          Required. The left text, or the empty string to omit the left side of
+          the badge. This can be overridden by the query string.
+        </td>
+      </tr>
+      <tr>
+        <td><code>message</code></td>
+        <td>Required. Can't be empty. The right text.</td>
+      </tr>
+      <tr>
+        <td><code>color</code></td>
+        <td>
+          Default: <code>lightgrey</code>. The right color. Supports the eight
+          named colors above, as well as hex, rgb, rgba, hsl, hsla and css named
+          colors. This can be overridden by the query string.
+        </td>
+      </tr>
+      <tr>
+        <td><code>labelColor</code></td>
+        <td>
+          Default: <code>grey</code>. The left color. This can be overridden by
+          the query string.
+        </td>
+      </tr>
+      <tr>
+        <td><code>isError</code></td>
+        <td>
+          Default: <code>false</code>. <code>true</code> to treat this as an
+          error badge. This prevents the user from overriding the color. In the
+          future, it may affect cache behavior.
+        </td>
+      </tr>
+      <tr>
+        <td><code>namedLogo</code></td>
+        <td>
+          Default: none. One of the named logos supported by Shields
+          or <a href="https://simpleicons.org/">simple-icons</a>. Can be
+          overridden by the query string.
+        </td>
+      </tr>
+      <tr>
+        <td><code>logoSvg</code></td>
+        <td>Default: none. An SVG string containing a custom logo.</td>
+      </tr>
+      <tr>
+        <td><code>logoColor</code></td>
+        <td>
+          Default: none. Same meaning as the query string. Can be overridden by
+          the query string. Only works for named logos and Shields logos. If you
+          override the color of a multicolor Shield logo, the corresponding
+          named logo will be used and colored.
+        </td>
+      </tr>
+      <tr>
+        <td><code>logoWidth</code></td>
+        <td>
+          Default: none. Same meaning as the query string. Can be overridden by
+          the query string.
+        </td>
+      </tr>
+      <tr>
+        <td><code>logoPosition</code></td>
+        <td>
+          Default: none. Same meaning as the query string. Can be overridden by
+          the query string.
+        </td>
+      </tr>
+      <tr>
+        <td><code>style</code></td>
+        <td>
+          Default: <code>flat</code>. The default template to use. Can be
+          overridden by the query string.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>`
+
+export default class Endpoint extends BaseJsonService {
+  static category = 'dynamic'
+
+  static route = {
+    base: 'endpoint',
+    pattern: '',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'endpoint',
-      pattern: '',
-      queryParamSchema,
-    }
+  static openApi = {
+    '/endpoint': {
+      get: {
+        summary: 'Endpoint Badge',
+        description,
+        parameters: queryParams({
+          name: 'url',
+          description: 'The URL to your JSON endpoint',
+          required: true,
+          example: 'https://shields.redsparr0w.com/2473/monday',
+        }),
+      },
+    },
   }
 
-  static get _cacheLength() {
-    return 300
-  }
-
-  static get defaultBadgeData() {
-    return {
-      label: 'custom badge',
-    }
-  }
+  static _cacheLength = 300
+  static defaultBadgeData = { label: 'custom badge' }
 
   static render({
     isError,
@@ -62,12 +173,22 @@ module.exports = class Endpoint extends BaseJsonService {
       logoWidth,
       logoPosition,
       style,
-      cacheSeconds,
+      // don't allow the user to set cacheSeconds any shorter than this._cacheLength
+      cacheSeconds: Math.max(
+        ...[this._cacheLength, cacheSeconds].filter(x => x !== undefined),
+      ),
     }
   }
 
   async handle(namedParams, { url }) {
-    const { protocol, hostname } = new URL(url)
+    let protocol, hostname
+    try {
+      const parsedUrl = new URL(url)
+      protocol = parsedUrl.protocol
+      hostname = parsedUrl.hostname
+    } catch (e) {
+      throw new InvalidParameter({ prettyMessage: 'invalid url' })
+    }
     if (protocol !== 'https:') {
       throw new InvalidParameter({ prettyMessage: 'please use https' })
     }
@@ -77,7 +198,7 @@ module.exports = class Endpoint extends BaseJsonService {
 
     const validated = await fetchEndpointData(this, {
       url,
-      errorMessages,
+      httpErrors,
       validationPrettyErrorMessage: 'invalid properties',
       includeKeys: true,
     })

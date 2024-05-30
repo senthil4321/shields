@@ -1,9 +1,7 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { coveragePercentage, letterScore } = require('../color-formatters')
-const { BaseJsonService, NotFound } = require('..')
-const { keywords, isLetterGrade, fetchRepo } = require('./codeclimate-common')
+import Joi from 'joi'
+import { coveragePercentage, letterScore } from '../color-formatters.js'
+import { BaseJsonService, NotFound, pathParams } from '../index.js'
+import { isLetterGrade, fetchRepo } from './codeclimate-common.js'
 
 const schema = Joi.object({
   data: Joi.object({
@@ -16,31 +14,28 @@ const schema = Joi.object({
   }).allow(null),
 }).required()
 
-module.exports = class CodeclimateCoverage extends BaseJsonService {
-  static get category() {
-    return 'coverage'
+export default class CodeclimateCoverage extends BaseJsonService {
+  static category = 'coverage'
+  static route = {
+    base: 'codeclimate',
+    pattern: ':format(coverage|coverage-letter)/:user/:repo',
   }
 
-  static get route() {
-    return {
-      base: 'codeclimate',
-      pattern: ':format(coverage|coverage-letter)/:user/:repo',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Code Climate coverage',
-        namedParams: { format: 'coverage', user: 'jekyll', repo: 'jekyll' },
-        staticPreview: this.render({
-          format: 'coverage',
-          percentage: 95.123,
-          letter: 'A',
-        }),
-        keywords,
+  static openApi = {
+    '/codeclimate/{format}/{user}/{repo}': {
+      get: {
+        summary: 'Code Climate coverage',
+        parameters: pathParams(
+          {
+            name: 'format',
+            example: 'coverage',
+            schema: { type: 'string', enum: this.getEnum('format') },
+          },
+          { name: 'user', example: 'codeclimate' },
+          { name: 'repo', example: 'codeclimate' },
+        ),
       },
-    ]
+    },
   }
 
   static render({ wantLetter, percentage, letter }) {
@@ -58,15 +53,19 @@ module.exports = class CodeclimateCoverage extends BaseJsonService {
   }
 
   async fetch({ user, repo }) {
+    const repoInfos = await fetchRepo(this, { user, repo })
+    const repoInfosWithTestReport = repoInfos.filter(
+      repoInfo => repoInfo.relationships.latest_default_branch_test_report.data,
+    )
+    if (repoInfosWithTestReport.length === 0) {
+      throw new NotFound({ prettyMessage: 'test report not found' })
+    }
     const {
       id: repoId,
       relationships: {
         latest_default_branch_test_report: { data: testReportInfo },
       },
-    } = await fetchRepo(this, { user, repo })
-    if (testReportInfo === null) {
-      throw new NotFound({ prettyMessage: 'test report not found' })
-    }
+    } = repoInfosWithTestReport[0]
     const { data } = await this._requestJson({
       schema,
       url: `https://api.codeclimate.com/v1/repos/${repoId}/test_reports/${testReportInfo.id}`,

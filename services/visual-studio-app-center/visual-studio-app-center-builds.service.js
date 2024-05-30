@@ -1,51 +1,52 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { isBuildStatus, renderBuildStatusBadge } = require('../build-status')
-const { NotFound } = require('..')
-const {
+import Joi from 'joi'
+import { isBuildStatus, renderBuildStatusBadge } from '../build-status.js'
+import { NotFound, pathParams } from '../index.js'
+import {
   BaseVisualStudioAppCenterService,
-  keywords,
-  documentation,
-} = require('./visual-studio-app-center-base')
+  description,
+} from './visual-studio-app-center-base.js'
 
 const schema = Joi.array().items({
   result: isBuildStatus.required(),
 })
 
-module.exports = class VisualStudioAppCenterBuilds extends BaseVisualStudioAppCenterService {
-  static get category() {
-    return 'build'
+export default class VisualStudioAppCenterBuilds extends BaseVisualStudioAppCenterService {
+  static category = 'build'
+
+  static route = {
+    base: 'visual-studio-app-center/builds',
+    pattern: ':owner/:app/:branch/:token',
   }
 
-  static get route() {
-    return {
-      base: 'visual-studio-app-center/builds',
-      pattern: ':owner/:app/:branch/:token',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Visual Studio App Center Builds',
-        namedParams: {
-          owner: 'jct',
-          app: 'my-amazing-app',
-          branch: 'master',
-          token: 'ac70cv...',
-        },
-        staticPreview: renderBuildStatusBadge({ status: 'succeeded' }),
-        keywords,
-        documentation,
+  static openApi = {
+    '/visual-studio-app-center/builds/{owner}/{app}/{branch}/{token}': {
+      get: {
+        summary: 'Visual Studio App Center Builds',
+        description,
+        parameters: pathParams(
+          {
+            name: 'owner',
+            example: 'jct',
+          },
+          {
+            name: 'app',
+            example: 'my-amazing-app',
+          },
+          {
+            name: 'branch',
+            example: 'master',
+          },
+          {
+            name: 'token',
+            example: 'ac70cv...',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'build',
-    }
+  static defaultBadgeData = {
+    label: 'build',
   }
 
   async handle({ owner, app, branch, token }) {

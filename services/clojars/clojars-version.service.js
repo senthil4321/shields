@@ -1,46 +1,37 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { version: versionColor } = require('../color-formatters')
-const { redirector } = require('..')
-const { BaseClojarsService } = require('./clojars-base')
+import Joi from 'joi'
+import { version as versionColor } from '../color-formatters.js'
+import { redirector, pathParam, queryParam } from '../index.js'
+import { BaseClojarsService, description } from './clojars-base.js'
 
 const queryParamSchema = Joi.object({
   include_prereleases: Joi.equal(''),
 }).required()
 
 class ClojarsVersionService extends BaseClojarsService {
-  static get category() {
-    return 'version'
-  }
+  static category = 'version'
+  static route = { base: 'clojars/v', pattern: ':clojar+', queryParamSchema }
 
-  static get route() {
-    return {
-      base: 'clojars/v',
-      pattern: ':clojar+',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Clojars Version',
-        namedParams: { clojar: 'prismic' },
-        staticPreview: this.render({ clojar: 'clojar', version: '1.2' }),
+  static openApi = {
+    '/clojars/v/{clojar}': {
+      get: {
+        summary: 'Clojars Version',
+        description,
+        parameters: [
+          pathParam({
+            name: 'clojar',
+            example: 'prismic',
+          }),
+          queryParam({
+            name: 'include_prereleases',
+            schema: { type: 'boolean' },
+            example: null,
+          }),
+        ],
       },
-      {
-        title: 'Clojars Version (including pre-releases)',
-        namedParams: { clojar: 'prismic' },
-        queryParams: { include_prereleases: null },
-        staticPreview: this.render({ clojar: 'clojar', version: '1.2' }),
-      },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'clojars' }
-  }
+  static defaultBadgeData = { label: 'clojars' }
 
   static render({ clojar, version }) {
     return {
@@ -76,4 +67,4 @@ const ClojarsVersionRedirector = redirector({
   dateAdded: new Date('2019-12-15'),
 })
 
-module.exports = { ClojarsVersionService, ClojarsVersionRedirector }
+export { ClojarsVersionService, ClojarsVersionRedirector }

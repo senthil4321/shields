@@ -1,24 +1,54 @@
-'use strict'
+/**
+ * Common functions and utilities for tasks related to dynamic badges.
+ *
+ * @module
+ */
 
-const Joi = require('@hapi/joi')
-const toArray = require('../core/base-service/to-array')
-const validate = require('../core/base-service/validate')
-const { InvalidResponse } = require('.')
+import Joi from 'joi'
+import toArray from '../core/base-service/to-array.js'
+import validate from '../core/base-service/validate.js'
+import { InvalidResponse } from './index.js'
 
-const errorMessages = {
+/**
+ * Map of error codes and their corresponding error messages.
+ *
+ * @type {object}
+ */
+const httpErrors = {
   404: 'resource not found',
 }
 
+/**
+ * Joi schema for validating individual value.
+ * Checks if the individual value is of type string or number.
+ *
+ * @type {Joi}
+ */
 const individualValueSchema = Joi.alternatives()
   .try(Joi.string(), Joi.number())
   .required()
 
+/**
+ * Joi schema for validating compound value.
+ * Checks if the compound value is of type individualValueSchema, array of individualValueSchema or empty array.
+ *
+ * @type {Joi}
+ */
 const compoundValueSchema = Joi.alternatives().try(
   individualValueSchema,
   Joi.array().items(individualValueSchema).required(),
-  Joi.array().length(0)
+  Joi.array().length(0),
 )
 
+/**
+ * Look up the value in the data object by key and validate the value against compoundValueSchema.
+ *
+ * @param {object} attrs Refer to individual attributes
+ * @param {object} attrs.data Object containing the data for validation
+ * @param {string} attrs.key Key to retrieve the data from object for validation
+ * @throws {InvalidResponse|Error} Error if Joi validation fails due to invalid or no schema
+ * @returns {object} Value if Joi validation is success
+ */
 function transformAndValidate({ data, key }) {
   return validate(
     {
@@ -28,10 +58,24 @@ function transformAndValidate({ data, key }) {
       traceSuccessMessage: 'Key value after validation',
     },
     data[key],
-    compoundValueSchema
+    compoundValueSchema,
   )
 }
 
+/**
+ * Handles rendering concerns of dynamic badges.
+ * Determines the label of the badge according to the tag and defaultLabel.
+ * Determines the message of the badge according to the prefix, suffix and value.
+ * Sets the color of the badge to blue.
+ *
+ * @param {object} attrs Refer to individual attributes
+ * @param {string} attrs.defaultLabel default badge label
+ * @param {string} [attrs.tag] If provided then this value will be appended to the badge label, e.g. `foobar@v1.23`
+ * @param {any} attrs.value Value or array of value to be used for the badge message
+ * @param {string} [attrs.prefix] If provided then the badge message will use this value as a prefix
+ * @param {string} [attrs.suffix] If provided then the badge message will use this value as a suffix
+ * @returns {object} Badge with label, message and color properties
+ */
 function renderDynamicBadge({
   defaultLabel,
   tag,
@@ -48,8 +92,8 @@ function renderDynamicBadge({
   }
 }
 
-module.exports = {
-  errorMessages,
+export {
+  httpErrors,
   individualValueSchema,
   transformAndValidate,
   renderDynamicBadge,

@@ -1,7 +1,6 @@
-'use strict'
-
-const { isVPlusDottedVersionAtLeastOne } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isVPlusDottedVersionAtLeastOne } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('hackage version (valid)').get('/lens.json').expectBadge({
   label: 'hackage',
@@ -17,6 +16,6 @@ t.create('hackage version (unexpected response)')
   .intercept(nock =>
     nock('https://hackage.haskell.org')
       .get('/package/lens/lens.cabal')
-      .reply(200, '')
+      .reply(200, ''),
   )
   .expectBadge({ label: 'hackage', message: 'invalid response data' })

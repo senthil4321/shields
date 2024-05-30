@@ -1,8 +1,7 @@
-'use strict'
-
-const { expect } = require('chai')
-const config = require('config').util.toObject()
-const GithubApiProvider = require('./github-api-provider')
+import { expect } from 'chai'
+import config from 'config'
+import { fetch } from '../../core/base-service/got.js'
+import GithubApiProvider from './github-api-provider.js'
 
 describe('Github API provider', function () {
   const baseUrl = process.env.GITHUB_URL || 'https://api.github.com'
@@ -10,7 +9,7 @@ describe('Github API provider', function () {
 
   let token
   before(function () {
-    token = config.private.gh_token
+    token = config.util.toObject().private.gh_token
     if (!token) {
       throw Error('The integration tests require a gh_token to be set')
     }
@@ -18,11 +17,32 @@ describe('Github API provider', function () {
 
   let githubApiProvider
 
-  context('without token pool', function () {
+  context('with no auth', function () {
     before(function () {
       githubApiProvider = new GithubApiProvider({
         baseUrl,
-        withPooling: false,
+        authType: GithubApiProvider.AUTH_TYPES.NO_AUTH,
+      })
+    })
+
+    it('should be able to run 10 requests', async function () {
+      this.timeout('20s')
+      for (let i = 0; i < 10; ++i) {
+        const { res } = await githubApiProvider.fetch(
+          fetch,
+          '/repos/rust-lang/rust',
+          {},
+        )
+        expect(res.statusCode).to.equal(200)
+      }
+    })
+  })
+
+  context('with global token', function () {
+    before(function () {
+      githubApiProvider = new GithubApiProvider({
+        baseUrl,
+        authType: GithubApiProvider.AUTH_TYPES.GLOBAL_TOKEN,
         globalToken: token,
         reserveFraction,
       })
@@ -31,11 +51,12 @@ describe('Github API provider', function () {
     it('should be able to run 10 requests', async function () {
       this.timeout('20s')
       for (let i = 0; i < 10; ++i) {
-        await githubApiProvider.requestAsPromise(
-          require('request'),
+        const { res } = await githubApiProvider.fetch(
+          fetch,
           '/repos/rust-lang/rust',
-          {}
+          {},
         )
+        expect(res.statusCode).to.equal(200)
       }
     })
   })
@@ -45,7 +66,7 @@ describe('Github API provider', function () {
     before(function () {
       githubApiProvider = new GithubApiProvider({
         baseUrl,
-        withPooling: true,
+        authType: GithubApiProvider.AUTH_TYPES.TOKEN_POOL,
         reserveFraction,
       })
       githubApiProvider.addToken(token)
@@ -53,10 +74,10 @@ describe('Github API provider', function () {
 
     const headers = []
     async function performOneRequest() {
-      const { res } = await githubApiProvider.requestAsPromise(
-        require('request'),
+      const { res } = await githubApiProvider.fetch(
+        fetch,
         '/repos/rust-lang/rust',
-        {}
+        {},
       )
       expect(res.statusCode).to.equal(200)
       headers.push(res.headers)
@@ -74,12 +95,13 @@ describe('Github API provider', function () {
         const current = headers[i]
         const previous = headers[i - 1]
         expect(+current['x-ratelimit-remaining']).to.be.lessThan(
-          +previous['x-ratelimit-remaining']
+          +previous['x-ratelimit-remaining'],
         )
       }
     })
 
-    it.skip('should update the token with the final limit remaining and reset time', function () {
+    // Is this test failing? See https://github.com/badges/shields/pull/4590#issuecomment-708551801
+    it('should update the token with the final limit remaining and reset time', function () {
       const lastHeaders = headers.slice(-1)[0]
       const reserve = reserveFraction * +lastHeaders['x-ratelimit-limit']
       const usesRemaining = +lastHeaders['x-ratelimit-remaining'] - reserve

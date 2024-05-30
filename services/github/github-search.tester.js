@@ -1,7 +1,6 @@
-'use strict'
-
-const { isMetric } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isMetric } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('hit counter')
   .get('/badges/shields/async%20handle.json')
@@ -9,4 +8,4 @@ t.create('hit counter')
 
 t.create('hit counter for nonexistent repo')
   .get('/badges/puppets/async%20handle.json')
-  .expectBadge({ label: 'counter', message: 'repo not found' })
+  .expectBadge({ label: 'async handle counter', message: '0' })

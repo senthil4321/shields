@@ -1,33 +1,24 @@
-'use strict'
+import { pathParams } from '../index.js'
+import { renderVersionBadge } from '../version.js'
+import BaseCocoaPodsService from './cocoapods-base.js'
 
-const { renderVersionBadge } = require('../version')
-const BaseCocoaPodsService = require('./cocoapods-base')
+export default class CocoapodsVersion extends BaseCocoaPodsService {
+  static category = 'version'
+  static route = { base: 'cocoapods/v', pattern: ':spec' }
 
-module.exports = class CocoapodsVersion extends BaseCocoaPodsService {
-  static get category() {
-    return 'version'
-  }
-
-  static get route() {
-    return {
-      base: 'cocoapods/v',
-      pattern: ':spec',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Cocoapods',
-        namedParams: { spec: 'AFNetworking' },
-        staticPreview: renderVersionBadge({ version: 'v3.2.1' }),
+  static openApi = {
+    '/cocoapods/v/{spec}': {
+      get: {
+        summary: 'Cocoapods Version',
+        parameters: pathParams({
+          name: 'spec',
+          example: 'AFNetworking',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'pod' }
-  }
+  static defaultBadgeData = { label: 'pod' }
 
   async handle({ spec }) {
     const { version } = await this.fetch({ spec })

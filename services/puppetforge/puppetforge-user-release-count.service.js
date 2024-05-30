@@ -1,36 +1,29 @@
-'use strict'
+import { pathParams } from '../index.js'
+import { metric } from '../text-formatters.js'
+import { floorCount as floorCountColor } from '../color-formatters.js'
+import { BasePuppetForgeUsersService } from './puppetforge-base.js'
 
-const { metric } = require('../text-formatters')
-const { floorCount: floorCountColor } = require('../color-formatters')
-const { BasePuppetForgeUsersService } = require('./puppetforge-base')
+export default class PuppetForgeReleaseCountService extends BasePuppetForgeUsersService {
+  static category = 'other'
 
-module.exports = class PuppetForgeReleaseCountService extends BasePuppetForgeUsersService {
-  static get category() {
-    return 'other'
+  static route = {
+    base: 'puppetforge/rc',
+    pattern: ':user',
   }
 
-  static get route() {
-    return {
-      base: 'puppetforge/rc',
-      pattern: ':user',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Puppet Forge releases by user',
-        namedParams: {
-          user: 'camptocamp',
-        },
-        staticPreview: this.render({ releases: 1000 }),
+  static openApi = {
+    '/puppetforge/rc/{user}': {
+      get: {
+        summary: 'Puppet Forge releases by user',
+        parameters: pathParams({
+          name: 'user',
+          example: 'camptocamp',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'releases' }
-  }
+  static defaultBadgeData = { label: 'releases' }
 
   static render({ releases }) {
     return {

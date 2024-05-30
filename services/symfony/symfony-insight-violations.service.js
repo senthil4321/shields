@@ -1,29 +1,23 @@
-'use strict'
+import { pathParams } from '../index.js'
+import { SymfonyInsightBase, description } from './symfony-insight-base.js'
 
-const { SymfonyInsightBase, keywords } = require('./symfony-insight-base')
-
-module.exports = class SymfonyInsightViolations extends SymfonyInsightBase {
-  static get route() {
-    return {
-      base: 'symfony/i/violations',
-      pattern: ':projectUuid',
-    }
+export default class SymfonyInsightViolations extends SymfonyInsightBase {
+  static route = {
+    base: 'symfony/i/violations',
+    pattern: ':projectUuid',
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'SymfonyInsight Violations',
-        namedParams: {
-          projectUuid: '45afb680-d4e6-4e66-93ea-bcfa79eb8a87',
-        },
-        staticPreview: this.render({
-          numViolations: 0,
-          status: 'finished',
+  static openApi = {
+    '/symfony/i/violations/{projectUuid}': {
+      get: {
+        summary: 'SymfonyInsight Violations',
+        description,
+        parameters: pathParams({
+          name: 'projectUuid',
+          example: '825be328-29f8-44f7-a750-f82818ae9111',
         }),
-        keywords,
       },
-    ]
+    },
   }
 
   static render({

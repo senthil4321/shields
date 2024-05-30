@@ -1,24 +1,23 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { renderLicenseBadge } = require('../licenses')
-const { renderVersionBadge } = require('../version')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import { renderLicenseBadge } from '../licenses.js'
+import { renderVersionBadge } from '../version.js'
+import { BaseJsonService, InvalidResponse, pathParams } from '../index.js'
 
 const schema = Joi.object({
   license: Joi.array().items(Joi.string()).single(),
   version: Joi.object({
-    number: Joi.string().required(),
+    number: Joi.string().allow('').required(),
+    date: Joi.string().allow('').required(),
   }).required(),
 }).required()
 
+const description = '[CTAN](https://ctan.org/) is a package registry for TeX.'
+
 class BaseCtanService extends BaseJsonService {
-  static get defaultBadgeData() {
-    return { label: 'ctan' }
-  }
+  static defaultBadgeData = { label: 'ctan' }
 
   async fetch({ library }) {
-    const url = `http://www.ctan.org/json/pkg/${library}`
+    const url = `https://www.ctan.org/json/2.0/pkg/${library}`
     return this._requestJson({
       schema,
       url,
@@ -27,31 +26,23 @@ class BaseCtanService extends BaseJsonService {
 }
 
 class CtanLicense extends BaseCtanService {
-  static get category() {
-    return 'license'
-  }
+  static category = 'license'
+  static route = { base: 'ctan/l', pattern: ':library' }
 
-  static get route() {
-    return {
-      base: 'ctan/l',
-      pattern: ':library',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'CTAN',
-        namedParams: { library: 'novel' },
-        staticPreview: this.render({ licenses: ['ppl1.3c', 'ofl'] }),
-        keywords: ['tex'],
+  static openApi = {
+    '/ctan/l/{library}': {
+      get: {
+        summary: 'CTAN License',
+        description,
+        parameters: pathParams({
+          name: 'library',
+          example: 'novel',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'license' }
-  }
+  static defaultBadgeData = { label: 'license' }
 
   static render({ licenses }) {
     return renderLicenseBadge({ licenses })
@@ -65,26 +56,20 @@ class CtanLicense extends BaseCtanService {
 }
 
 class CtanVersion extends BaseCtanService {
-  static get category() {
-    return 'version'
-  }
+  static category = 'version'
+  static route = { base: 'ctan/v', pattern: ':library' }
 
-  static get route() {
-    return {
-      base: 'ctan/v',
-      pattern: ':library',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'CTAN',
-        namedParams: { library: 'tex' },
-        staticPreview: this.render({ version: '3.14159265' }),
-        keywords: ['tex'],
+  static openApi = {
+    '/ctan/v/{library}': {
+      get: {
+        summary: 'CTAN Version',
+        description,
+        parameters: pathParams({
+          name: 'library',
+          example: 'tex',
+        }),
       },
-    ]
+    },
   }
 
   static render({ version }) {
@@ -93,11 +78,23 @@ class CtanVersion extends BaseCtanService {
 
   async handle({ library }) {
     const json = await this.fetch({ library })
-    return renderVersionBadge({ version: json.version.number })
+    const version = json.version.number
+    if (version !== '') {
+      return renderVersionBadge({ version })
+    } else {
+      const date = json.version.date
+      if (date !== '') {
+        return renderVersionBadge({
+          version: date,
+          versionFormatter: color => 'blue',
+        })
+      } else {
+        return new InvalidResponse({
+          underlyingError: new Error('Both number and date are empty'),
+        })
+      }
+    }
   }
 }
 
-module.exports = {
-  CtanLicense,
-  CtanVersion,
-}
+export { CtanLicense, CtanVersion }

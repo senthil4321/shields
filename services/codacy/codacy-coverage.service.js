@@ -1,11 +1,6 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const {
-  coveragePercentage: coveragePercentageColor,
-} = require('../color-formatters')
-const { BaseSvgScrapingService } = require('..')
-const { NotFound } = require('..')
+import Joi from 'joi'
+import { coveragePercentage as coveragePercentageColor } from '../color-formatters.js'
+import { BaseSvgScrapingService, NotFound, pathParams } from '../index.js'
 
 const schema = Joi.object({
   message: Joi.alternatives()
@@ -13,43 +8,38 @@ const schema = Joi.object({
     .required(),
 }).required()
 
-module.exports = class CodacyCoverage extends BaseSvgScrapingService {
-  static get category() {
-    return 'coverage'
-  }
+export default class CodacyCoverage extends BaseSvgScrapingService {
+  static category = 'coverage'
+  static route = { base: 'codacy/coverage', pattern: ':projectId/:branch*' }
 
-  static get route() {
-    return {
-      base: 'codacy/coverage',
-      pattern: ':projectId/:branch*',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Codacy coverage',
-        pattern: ':projectId',
-        namedParams: { projectId: '59d607d0e311408885e418004068ea58' },
-        staticPreview: this.render({ percentage: 90 }),
+  static openApi = {
+    '/codacy/coverage/{projectId}': {
+      get: {
+        summary: 'Codacy coverage',
+        parameters: pathParams({
+          name: 'projectId',
+          example: 'd5402a91aa7b4234bd1c19b5e86a63be',
+        }),
       },
-      {
-        title: 'Codacy branch coverage',
-        pattern: ':projectId/:branch',
-        namedParams: {
-          projectId: '59d607d0e311408885e418004068ea58',
-          branch: 'master',
-        },
-        staticPreview: this.render({ percentage: 90 }),
+    },
+    '/codacy/coverage/{projectId}/{branch}': {
+      get: {
+        summary: 'Codacy coverage (branch)',
+        parameters: pathParams(
+          {
+            name: 'projectId',
+            example: 'd5402a91aa7b4234bd1c19b5e86a63be',
+          },
+          {
+            name: 'branch',
+            example: 'master',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'coverage',
-    }
-  }
+  static defaultBadgeData = { label: 'coverage' }
 
   static render({ percentage }) {
     return {
@@ -68,11 +58,11 @@ module.exports = class CodacyCoverage extends BaseSvgScrapingService {
     const { message: coverageString } = await this._requestSvg({
       schema,
       url: `https://api.codacy.com/project/badge/coverage/${encodeURIComponent(
-        projectId
+        projectId,
       )}`,
-      options: { qs: { branch } },
+      options: { searchParams: { branch } },
       valueMatcher: /text-anchor="middle">([^<>]+)<\/text>/,
-      errorMessages: {
+      httpErrors: {
         404: 'project not found',
       },
     })

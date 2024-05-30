@@ -1,8 +1,7 @@
-'use strict'
-
-const { starRating, metric } = require('../text-formatters')
-const { floorCount } = require('../color-formatters')
-const BaseWordpress = require('./wordpress-base')
+import { floorCount } from '../color-formatters.js'
+import { pathParams } from '../index.js'
+import { starRating, metric } from '../text-formatters.js'
+import { description, BaseWordpress } from './wordpress-base.js'
 
 const extensionData = {
   plugin: {
@@ -16,41 +15,36 @@ const extensionData = {
 }
 
 class WordpressRatingBase extends BaseWordpress {
-  static get category() {
-    return 'rating'
-  }
+  static category = 'rating'
 
-  static get defaultBadgeData() {
-    return { label: 'rating' }
-  }
+  static defaultBadgeData = { label: 'rating' }
 }
 
 function RatingForExtensionType(extensionType) {
   const { capt, exampleSlug } = extensionData[extensionType]
 
   return class WordpressRating extends WordpressRatingBase {
-    static get name() {
-      return `Wordpress${capt}Rating`
+    static name = `Wordpress${capt}Rating`
+
+    static route = {
+      base: `wordpress/${extensionType}/rating`,
+      pattern: ':slug',
     }
 
-    static get route() {
-      return {
-        base: `wordpress/${extensionType}/rating`,
-        pattern: ':slug',
-      }
-    }
-
-    static get examples() {
-      return [
-        {
-          title: `WordPress ${capt} Rating`,
-          namedParams: { slug: exampleSlug },
-          staticPreview: this.render({
-            rating: 80,
-            numRatings: 100,
+    static get openApi() {
+      const key = `/wordpress/${extensionType}/rating/{slug}`
+      const route = {}
+      route[key] = {
+        get: {
+          summary: `WordPress ${capt} Rating`,
+          description,
+          parameters: pathParams({
+            name: 'slug',
+            example: exampleSlug,
           }),
         },
-      ]
+      }
+      return route
     }
 
     static render({ rating, numRatings }) {
@@ -75,29 +69,27 @@ function StarsForExtensionType(extensionType) {
   const { capt, exampleSlug } = extensionData[extensionType]
 
   return class WordpressStars extends WordpressRatingBase {
-    static get name() {
-      return `Wordpress${capt}Stars`
+    static name = `Wordpress${capt}Stars`
+
+    static route = {
+      base: `wordpress/${extensionType}`,
+      pattern: '(stars|r)/:slug',
     }
 
-    static get route() {
-      return {
-        base: `wordpress/${extensionType}`,
-        pattern: '(stars|r)/:slug',
-      }
-    }
-
-    static get examples() {
-      return [
-        {
-          title: `WordPress ${capt} Rating`,
-          pattern: 'stars/:slug',
-          namedParams: { slug: exampleSlug },
-          staticPreview: this.render({
-            rating: 80,
+    static get openApi() {
+      const key = `/wordpress/${extensionType}/stars/{slug}`
+      const route = {}
+      route[key] = {
+        get: {
+          summary: `WordPress ${capt} Stars`,
+          description,
+          parameters: pathParams({
+            name: 'slug',
+            example: exampleSlug,
           }),
-          documentation: 'There is an alias <code>/r/:slug.svg</code> as well.',
         },
-      ]
+      }
+      return route
     }
 
     static render({ rating }) {
@@ -119,4 +111,4 @@ const ratingsServices = ['plugin', 'theme'].map(RatingForExtensionType)
 const starsServices = ['plugin', 'theme'].map(StarsForExtensionType)
 const modules = [...ratingsServices, ...starsServices]
 
-module.exports = modules
+export default modules

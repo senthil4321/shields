@@ -1,15 +1,22 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { nonNegativeInteger } = require('../validators')
-const { latest, renderVersionBadge } = require('../version')
-const { BaseJsonService, NotFound, InvalidResponse } = require('..')
-const {
+import Joi from 'joi'
+import { nonNegativeInteger } from '../validators.js'
+import { latest, renderVersionBadge } from '../version.js'
+import {
+  BaseJsonService,
+  NotFound,
+  InvalidResponse,
+  pathParams,
+  queryParams,
+} from '../index.js'
+import {
+  archEnum,
+  archSchema,
   buildDockerUrl,
   getDockerHubUser,
   getMultiPageData,
   getDigestSemVerMatches,
-} = require('./docker-helpers')
+} from './docker-helpers.js'
+import { fetch } from './docker-hub-common-fetch.js'
 
 const buildSchema = Joi.object({
   count: nonNegativeInteger.required(),
@@ -20,56 +27,77 @@ const buildSchema = Joi.object({
         Joi.object({
           digest: Joi.string(),
           architecture: Joi.string().required(),
-        })
+        }),
       ),
-    })
+    }),
   ),
 }).required()
 
+const sortEnum = ['date', 'semver']
+
 const queryParamSchema = Joi.object({
   sort: Joi.string().valid('date', 'semver').default('date'),
+  arch: archSchema.default('amd64'),
 }).required()
 
-module.exports = class DockerVersion extends BaseJsonService {
-  static get category() {
-    return 'version'
+const openApiQueryParams = queryParams(
+  {
+    name: 'sort',
+    example: 'semver',
+    schema: { type: 'string', enum: sortEnum },
+    description: 'If not specified, the default is `date`',
+  },
+  {
+    name: 'arch',
+    example: 'amd64',
+    schema: { type: 'string', enum: archEnum },
+    description: 'If not specified, the default is `amd64`',
+  },
+)
+
+export default class DockerVersion extends BaseJsonService {
+  static category = 'version'
+  static route = { ...buildDockerUrl('v', true), queryParamSchema }
+
+  static auth = {
+    userKey: 'dockerhub_username',
+    passKey: 'dockerhub_pat',
+    authorizedOrigins: [
+      'https://hub.docker.com',
+      'https://registry.hub.docker.com',
+    ],
+    isRequired: false,
   }
 
-  static get route() {
-    return { ...buildDockerUrl('v', true), queryParamSchema }
+  static openApi = {
+    '/docker/v/{user}/{repo}': {
+      get: {
+        summary: 'Docker Image Version',
+        parameters: [
+          ...pathParams(
+            { name: 'user', example: '_' },
+            { name: 'repo', example: 'alpine' },
+          ),
+          ...openApiQueryParams,
+        ],
+      },
+    },
+    '/docker/v/{user}/{repo}/{tag}': {
+      get: {
+        summary: 'Docker Image Version (tag)',
+        parameters: [
+          ...pathParams(
+            { name: 'user', example: '_' },
+            { name: 'repo', example: 'alpine' },
+            { name: 'tag', example: '3.6' },
+          ),
+          ...openApiQueryParams,
+        ],
+      },
+    },
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'Docker Image Version (latest by date)',
-        pattern: ':user/:repo',
-        namedParams: { user: '_', repo: 'alpine' },
-        queryParams: { sort: 'date' },
-        staticPreview: this.render({ version: '3.9.5' }),
-      },
-      {
-        title: 'Docker Image Version (latest semver)',
-        pattern: ':user/:repo',
-        namedParams: { user: '_', repo: 'alpine' },
-        queryParams: { sort: 'semver' },
-        staticPreview: this.render({ version: '3.11.3' }),
-      },
-      {
-        title: 'Docker Image Version (tag latest semver)',
-        pattern: ':user/:repo/:tag',
-        namedParams: { user: '_', repo: 'alpine', tag: '3.6' },
-        staticPreview: this.render({ version: '3.6.5' }),
-      },
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return {
-      label: 'version',
-      color: 'blue',
-    }
-  }
+  static defaultBadgeData = { label: 'version', color: 'blue' }
 
   static render({ version }) {
     return renderVersionBadge({ version })
@@ -77,16 +105,16 @@ module.exports = class DockerVersion extends BaseJsonService {
 
   async fetch({ user, repo, page }) {
     page = page ? `&page=${page}` : ''
-    return this._requestJson({
+    return await fetch(this, {
       schema: buildSchema,
       url: `https://registry.hub.docker.com/v2/repositories/${getDockerHubUser(
-        user
+        user,
       )}/${repo}/tags?page_size=100&ordering=last_updated${page}`,
-      errorMessages: { 404: 'repository or tag not found' },
+      httpErrors: { 404: 'repository or tag not found' },
     })
   }
 
-  transform({ tag, sort, data, pagedData }) {
+  transform({ tag, sort, data, pagedData, arch = 'amd64' }) {
     let version
 
     if (!tag && sort === 'date') {
@@ -94,9 +122,7 @@ module.exports = class DockerVersion extends BaseJsonService {
       if (version !== 'latest') {
         return { version }
       }
-      const imageTag = data.results[0].images.find(
-        i => i.architecture === 'amd64'
-      ) // Digest is the unique field that we utilise to match images
+      const imageTag = data.results[0].images.find(i => i.architecture === arch) // Digest is the unique field that we utilise to match images
       if (!imageTag) {
         throw new InvalidResponse({
           prettyMessage: 'digest not found for latest tag',
@@ -115,12 +141,18 @@ module.exports = class DockerVersion extends BaseJsonService {
       if (Object.keys(version.images).length === 0) {
         return { version: version.name }
       }
-      const { digest } = version.images.find(i => i.architecture === 'amd64')
+      const image = version.images.find(i => i.architecture === arch)
+      if (!image) {
+        throw new InvalidResponse({
+          prettyMessage: 'digest not found for given tag',
+        })
+      }
+      const { digest } = image
       return { version: getDigestSemVerMatches({ data, digest }) }
     }
   }
 
-  async handle({ user, repo, tag }, { sort }) {
+  async handle({ user, repo, tag }, { sort, arch }) {
     let data, pagedData
 
     if (!tag && sort === 'date') {
@@ -143,7 +175,13 @@ module.exports = class DockerVersion extends BaseJsonService {
       })
     }
 
-    const { version } = await this.transform({ tag, sort, data, pagedData })
+    const { version } = await this.transform({
+      tag,
+      sort,
+      data,
+      pagedData,
+      arch,
+    })
     return this.constructor.render({ version })
   }
 }

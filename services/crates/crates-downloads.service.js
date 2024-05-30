@@ -1,93 +1,81 @@
-'use strict'
+import { renderDownloadsBadge } from '../downloads.js'
+import { InvalidParameter, pathParams } from '../index.js'
+import { BaseCratesService, description } from './crates-base.js'
 
-const { downloadCount: downloadCountColor } = require('../color-formatters')
-const { metric } = require('../text-formatters')
-const { InvalidParameter, NotFound } = require('..')
-const { BaseCratesService, keywords } = require('./crates-base')
-
-module.exports = class CratesDownloads extends BaseCratesService {
-  static get category() {
-    return 'downloads'
+export default class CratesDownloads extends BaseCratesService {
+  static category = 'downloads'
+  static route = {
+    base: 'crates',
+    pattern: ':variant(d|dv|dr)/:crate/:version?',
   }
 
-  static get route() {
-    return {
-      base: 'crates',
-      pattern: ':variant(d|dv|dr)/:crate/:version?',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Crates.io',
-        pattern: 'd/:crate',
-        namedParams: {
-          crate: 'rustc-serialize',
-        },
-        staticPreview: this.render({ variant: 'd', downloads: 5000000 }),
-        keywords,
-      },
-      {
-        title: 'Crates.io (latest)',
-        pattern: 'dv/:crate',
-        namedParams: {
-          crate: 'rustc-serialize',
-        },
-        staticPreview: this.render({ variant: 'dv', downloads: 2000000 }),
-        keywords,
-      },
-      {
-        title: 'Crates.io (version)',
-        pattern: 'dv/:crate/:version',
-        namedParams: {
-          crate: 'rustc-serialize',
-          version: '0.3.24',
-        },
-        staticPreview: this.render({
-          variant: 'dv',
-          downloads: 2000000,
-          version: '0.3.24',
+  static openApi = {
+    '/crates/d/{crate}': {
+      get: {
+        summary: 'Crates.io Total Downloads',
+        description,
+        parameters: pathParams({
+          name: 'crate',
+          example: 'rustc-serialize',
         }),
-        keywords,
       },
-      {
-        title: 'Crates.io (recent)',
-        pattern: 'dr/:crate',
-        namedParams: {
-          crate: 'rustc-serialize',
-        },
-        staticPreview: this.render({ variant: 'dr', downloads: 2000000 }),
-        keywords,
+    },
+    '/crates/dv/{crate}': {
+      get: {
+        summary: 'Crates.io Downloads (latest version)',
+        description,
+        parameters: pathParams({
+          name: 'crate',
+          example: 'rustc-serialize',
+        }),
       },
-    ]
-  }
-
-  static _getLabel(version, variant) {
-    switch (variant) {
-      case 'dv':
-        return version ? `downloads@${version}` : 'downloads@latest'
-      case 'dr':
-        return 'recent downloads'
-      default:
-        return version ? `downloads@${version}` : 'downloads'
-    }
+    },
+    '/crates/dv/{crate}/{version}': {
+      get: {
+        summary: 'Crates.io Downloads (version)',
+        description,
+        parameters: pathParams(
+          {
+            name: 'crate',
+            example: 'rustc-serialize',
+          },
+          {
+            name: 'version',
+            example: '0.3.24',
+          },
+        ),
+      },
+    },
+    '/crates/dr/{crate}': {
+      get: {
+        summary: 'Crates.io Downloads (recent)',
+        description,
+        parameters: pathParams({
+          name: 'crate',
+          example: 'rustc-serialize',
+        }),
+      },
+    },
   }
 
   static render({ variant, downloads, version }) {
-    return {
-      label: this._getLabel(version, variant),
-      message: metric(downloads),
-      color: downloadCountColor(downloads),
+    let labelOverride
+    if (variant === 'dr') {
+      labelOverride = 'recent downloads'
+    } else if (variant === 'dv' && !version) {
+      version = 'latest'
+    } else if (!version) {
+      labelOverride = 'downloads'
     }
+    return renderDownloadsBadge({ downloads, labelOverride, version })
   }
 
   transform({ variant, json }) {
     switch (variant) {
       case 'dv':
-        return json.crate ? json.versions[0].downloads : json.version.downloads
+        return this.constructor.getVersionObj(json).downloads
       case 'dr':
-        return json.crate.recent_downloads
+        return json.crate.recent_downloads || 0
       default:
         return json.crate ? json.crate.downloads : json.version.downloads
     }
@@ -104,15 +92,6 @@ module.exports = class CratesDownloads extends BaseCratesService {
     }
 
     const json = await this.fetch({ crate, version })
-
-    if (json.errors) {
-      /* a call like
-         https://crates.io/api/v1/crates/libc/0.1
-         or
-         https://crates.io/api/v1/crates/libc/0.1.76
-         returns a 200 OK with an errors object */
-      throw new NotFound({ prettyMessage: json.errors[0].detail })
-    }
 
     const downloads = this.transform({ variant, json })
 

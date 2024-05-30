@@ -1,7 +1,5 @@
-'use strict'
-
-const { renderBuildStatusBadge } = require('../build-status')
-const { BaseSvgScrapingService } = require('..')
+import { renderBuildStatusBadge } from '../build-status.js'
+import { BaseSvgScrapingService, pathParams } from '../index.js'
 
 const pendingStatus = 'building'
 const notBuiltStatus = 'not built'
@@ -16,36 +14,30 @@ const statusMap = {
   infrastructure_failure: 'failed',
 }
 
-module.exports = class Netlify extends BaseSvgScrapingService {
-  static get category() {
-    return 'build'
+export default class Netlify extends BaseSvgScrapingService {
+  static category = 'build'
+
+  static route = {
+    base: 'netlify',
+    pattern: ':projectId',
   }
 
-  static get route() {
-    return {
-      base: 'netlify',
-      pattern: ':projectId',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Netlify',
-        namedParams: {
-          projectId: 'e6d5a4e0-dee1-4261-833e-2f47f509c68f',
-        },
-        documentation:
+  static openApi = {
+    '/netlify/{projectId}': {
+      get: {
+        summary: 'Netlify',
+        description:
           'To locate your project id, visit your project settings, scroll to "Status badges" under "General", and copy the ID between "/api/v1/badges/" and "/deploy-status" in the code sample',
-        staticPreview: renderBuildStatusBadge({ status: 'passing' }),
+        parameters: pathParams({
+          name: 'projectId',
+          example: 'e6d5a4e0-dee1-4261-833e-2f47f509c68f',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'netlify',
-    }
+  static defaultBadgeData = {
+    label: 'netlify',
   }
 
   static render({ status }) {
@@ -62,9 +54,10 @@ module.exports = class Netlify extends BaseSvgScrapingService {
     const { buffer } = await this._request({
       url,
     })
-    if (buffer.includes('#EAFAF9')) return { message: 'passing' }
-    if (buffer.includes('#FFF3F4')) return { message: 'failing' }
-    if (buffer.includes('#FEFAEA')) return { message: 'building' }
+    if (buffer.includes('#0F4A21')) return { message: 'passing' }
+    if (buffer.includes('#800A20')) return { message: 'failing' }
+    if (buffer.includes('#603408')) return { message: 'building' }
+    if (buffer.includes('#181A1C')) return { message: 'canceled' }
     return { message: 'unknown' }
   }
 

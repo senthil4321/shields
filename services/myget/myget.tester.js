@@ -1,23 +1,21 @@
-'use strict'
-
-const { ServiceTester } = require('../tester')
-const {
+import { ServiceTester } from '../tester.js'
+import {
   isMetric,
   isVPlusDottedVersionNClausesWithOptionalSuffix,
-} = require('../test-validators')
-const {
+} from '../test-validators.js'
+import {
   queryIndex,
   nuGetV3VersionJsonWithDash,
   nuGetV3VersionJsonFirstCharZero,
   nuGetV3VersionJsonFirstCharNotZero,
-} = require('../nuget-fixtures')
-const { invalidJSON } = require('../response-fixtures')
+} from '../nuget-fixtures.js'
+import { invalidJSON } from '../response-fixtures.js'
 
-const t = (module.exports = new ServiceTester({
+export const t = new ServiceTester({
   id: 'myget',
   title: 'MyGet',
   pathPrefix: '',
-}))
+})
 
 // downloads
 
@@ -29,7 +27,7 @@ t.create('total downloads (valid)')
   })
 
 t.create('total downloads (tenant)')
-  .get('/dotnet.myget/dotnet-coreclr/dt/Microsoft.DotNet.CoreCLR.json')
+  .get('/vs-devcore.myget/vs-devcore/dt/MicroBuild.json')
   .expectBadge({
     label: 'downloads',
     message: isMetric,
@@ -39,22 +37,22 @@ t.create('total downloads (not found)')
   .get('/myget/mongodb/dt/not-a-real-package.json')
   .expectBadge({ label: 'downloads', message: 'package not found' })
 
-// This tests the erroring behavior in regular-update.
+// This tests the erroring behavior in getCachedResource.
 t.create('total downloads (connection error)')
   .get('/myget/mongodb/dt/MongoDB.Driver.Core.json')
   .networkOff()
   .expectBadge({
     label: 'downloads',
-    message: 'intermediate resource inaccessible',
+    message: 'inaccessible',
   })
 
-// This tests the erroring behavior in regular-update.
+// This tests the erroring behavior in getCachedResource.
 t.create('total downloads (unexpected first response)')
   .get('/myget/mongodb/dt/MongoDB.Driver.Core.json')
   .intercept(nock =>
     nock('https://www.myget.org')
       .get('/F/mongodb/api/v3/index.json')
-      .reply(invalidJSON)
+      .reply(invalidJSON),
   )
   .expectBadge({
     label: 'downloads',
@@ -70,10 +68,10 @@ t.create('version (valid)')
     message: isVPlusDottedVersionNClausesWithOptionalSuffix,
   })
 
-t.create('total downloads (tenant)')
-  .get('/dotnet.myget/dotnet-coreclr/v/Microsoft.DotNet.CoreCLR.json')
+t.create('version (tenant)')
+  .get('/tizen.myget/dotnet/v/Tizen.NET.json')
   .expectBadge({
-    label: 'dotnet-coreclr',
+    label: 'dotnet',
     message: isVPlusDottedVersionNClausesWithOptionalSuffix,
   })
 
@@ -82,14 +80,14 @@ t.create('version (yellow badge)')
   .intercept(nock =>
     nock('https://www.myget.org')
       .get('/F/mongodb/api/v3/index.json')
-      .reply(200, queryIndex)
+      .reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amongodb.driver.core&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amongodb.driver.core&prerelease=true&semVerLevel=2',
       )
-      .reply(200, nuGetV3VersionJsonWithDash)
+      .reply(200, nuGetV3VersionJsonWithDash),
   )
   .expectBadge({
     label: 'mongodb',
@@ -102,14 +100,14 @@ t.create('version (orange badge)')
   .intercept(nock =>
     nock('https://www.myget.org')
       .get('/F/mongodb/api/v3/index.json')
-      .reply(200, queryIndex)
+      .reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amongodb.driver.core&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amongodb.driver.core&prerelease=true&semVerLevel=2',
       )
-      .reply(200, nuGetV3VersionJsonFirstCharZero)
+      .reply(200, nuGetV3VersionJsonFirstCharZero),
   )
   .expectBadge({
     label: 'mongodb',
@@ -122,14 +120,14 @@ t.create('version (blue badge)')
   .intercept(nock =>
     nock('https://www.myget.org')
       .get('/F/mongodb/api/v3/index.json')
-      .reply(200, queryIndex)
+      .reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amongodb.driver.core&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amongodb.driver.core&prerelease=true&semVerLevel=2',
       )
-      .reply(200, nuGetV3VersionJsonFirstCharNotZero)
+      .reply(200, nuGetV3VersionJsonFirstCharNotZero),
   )
   .expectBadge({
     label: 'mongodb',
@@ -155,14 +153,14 @@ t.create('version (pre) (yellow badge)')
   .intercept(nock =>
     nock('https://www.myget.org')
       .get('/F/mongodb/api/v3/index.json')
-      .reply(200, queryIndex)
+      .reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amongodb.driver.core&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amongodb.driver.core&prerelease=true&semVerLevel=2',
       )
-      .reply(200, nuGetV3VersionJsonWithDash)
+      .reply(200, nuGetV3VersionJsonWithDash),
   )
   .expectBadge({
     label: 'mongodb',
@@ -175,14 +173,14 @@ t.create('version (pre) (orange badge)')
   .intercept(nock =>
     nock('https://www.myget.org')
       .get('/F/mongodb/api/v3/index.json')
-      .reply(200, queryIndex)
+      .reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amongodb.driver.core&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amongodb.driver.core&prerelease=true&semVerLevel=2',
       )
-      .reply(200, nuGetV3VersionJsonFirstCharZero)
+      .reply(200, nuGetV3VersionJsonFirstCharZero),
   )
   .expectBadge({
     label: 'mongodb',
@@ -195,14 +193,14 @@ t.create('version (pre) (blue badge)')
   .intercept(nock =>
     nock('https://www.myget.org')
       .get('/F/mongodb/api/v3/index.json')
-      .reply(200, queryIndex)
+      .reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amongodb.driver.core&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amongodb.driver.core&prerelease=true&semVerLevel=2',
       )
-      .reply(200, nuGetV3VersionJsonFirstCharNotZero)
+      .reply(200, nuGetV3VersionJsonFirstCharNotZero),
   )
   .expectBadge({
     label: 'mongodb',

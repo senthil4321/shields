@@ -1,15 +1,6 @@
-'use strict'
+import { BaseJsonService } from '../index.js'
 
-const { BaseJsonService } = require('..')
-
-const keywords = [
-  'visual-studio',
-  'vsac',
-  'visual-studio-app-center',
-  'app-center',
-]
-
-const documentation =
+const description =
   "You will need to create a <b>read-only</b> API token <a target='_blank' href='https://appcenter.ms/settings/apitokens'>here</a>."
 
 class BaseVisualStudioAppCenterService extends BaseJsonService {
@@ -27,7 +18,7 @@ class BaseVisualStudioAppCenterService extends BaseJsonService {
           'X-API-Token': token,
         },
       },
-      errorMessages: {
+      httpErrors: {
         401: 'invalid token',
         403: 'project not found',
         404: 'project not found',
@@ -37,4 +28,4 @@ class BaseVisualStudioAppCenterService extends BaseJsonService {
   }
 }
 
-module.exports = { keywords, documentation, BaseVisualStudioAppCenterService }
+export { description, BaseVisualStudioAppCenterService }

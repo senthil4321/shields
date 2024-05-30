@@ -1,20 +1,16 @@
-'use strict'
-
-const { promisify } = require('util')
-const moment = require('moment')
-const semver = require('semver')
-const { regularUpdate } = require('../../core/legacy/regular-update')
+import dayjs from 'dayjs'
+import semver from 'semver'
+import { getCachedResource } from '../../core/base-service/resource-cache.js'
 
 const dateFormat = 'YYYY-MM-DD'
 
-function getVersion(version) {
-  let semver = ``
+async function getVersion(version) {
+  let semver = ''
   if (version) {
     semver = `-${version}.x`
   }
-  return promisify(regularUpdate)({
+  return getCachedResource({
     url: `https://nodejs.org/dist/latest${semver}/SHASUMS256.txt`,
-    intervalMillis: 24 * 3600 * 1000,
     json: false,
     scraper: shasums => {
       // tarball index start, tarball index end
@@ -27,7 +23,7 @@ function getVersion(version) {
 }
 
 function ltsVersionsScraper(versions) {
-  const currentDate = moment().format(dateFormat)
+  const currentDate = dayjs().format(dateFormat)
   return Object.keys(versions).filter(function (version) {
     const data = versions[version]
     return data.lts && data.lts < currentDate && data.end > currentDate
@@ -39,11 +35,8 @@ async function getCurrentVersion() {
 }
 
 async function getLtsVersions() {
-  const versions = await promisify(regularUpdate)({
-    url:
-      'https://raw.githubusercontent.com/nodejs/Release/master/schedule.json',
-    intervalMillis: 24 * 3600 * 1000,
-    json: true,
+  const versions = await getCachedResource({
+    url: 'https://raw.githubusercontent.com/nodejs/Release/master/schedule.json',
     scraper: ltsVersionsScraper,
   })
   return Promise.all(versions.map(getVersion))
@@ -85,7 +78,4 @@ async function versionColorForRangeCurrent(range) {
   }
 }
 
-module.exports = {
-  versionColorForRangeCurrent,
-  versionColorForRangeLts,
-}
+export { versionColorForRangeCurrent, versionColorForRangeLts }

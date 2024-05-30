@@ -1,10 +1,8 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { coveragePercentage } = require('../color-formatters')
-const { optionalUrl } = require('../validators')
-const { InvalidResponse } = require('..')
-const TeamCityBase = require('./teamcity-base')
+import Joi from 'joi'
+import { coveragePercentage } from '../color-formatters.js'
+import { optionalUrl } from '../validators.js'
+import { InvalidResponse, pathParam, queryParam } from '../index.js'
+import TeamCityBase from './teamcity-base.js'
 
 const buildStatisticsSchema = Joi.object({
   property: Joi.array()
@@ -12,7 +10,7 @@ const buildStatisticsSchema = Joi.object({
       Joi.object({
         name: Joi.string().required(),
         value: Joi.string().required(),
-      })
+      }),
     )
     .required(),
 }).required()
@@ -21,40 +19,32 @@ const queryParamSchema = Joi.object({
   server: optionalUrl,
 }).required()
 
-module.exports = class TeamCityCoverage extends TeamCityBase {
-  static get category() {
-    return 'coverage'
+export default class TeamCityCoverage extends TeamCityBase {
+  static category = 'coverage'
+
+  static route = {
+    base: 'teamcity/coverage',
+    pattern: ':buildId',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'teamcity/coverage',
-      pattern: ':buildId',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'TeamCity Coverage',
-        namedParams: {
-          buildId: 'ReactJSNet_PullRequests',
-        },
-        queryParams: {
-          server: 'https://teamcity.jetbrains.com',
-        },
-        staticPreview: this.render({
-          coverage: 82,
-        }),
+  static openApi = {
+    '/teamcity/coverage/{buildId}': {
+      get: {
+        summary: 'TeamCity Coverage',
+        parameters: [
+          pathParam({ name: 'buildId', example: 'ReactJSNet_PullRequests' }),
+          queryParam({
+            name: 'server',
+            example: 'https://teamcity.jetbrains.com',
+          }),
+        ],
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'coverage',
-    }
+  static defaultBadgeData = {
+    label: 'coverage',
   }
 
   static render({ coverage }) {
@@ -87,7 +77,7 @@ module.exports = class TeamCityCoverage extends TeamCityBase {
     // JetBrains Docs: https://confluence.jetbrains.com/display/TCD18/REST+API#RESTAPI-Statistics
     const buildLocator = `buildType:(id:${buildId})`
     const apiPath = `app/rest/builds/${encodeURIComponent(
-      buildLocator
+      buildLocator,
     )}/statistics`
     const data = await this.fetch({
       url: `${server}/${apiPath}`,

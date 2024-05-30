@@ -1,38 +1,33 @@
-'use strict'
+import { BaseService, pathParams } from '../index.js'
 
-const { NonMemoryCachingBaseService } = require('..')
+export default class Maintenance extends BaseService {
+  static category = 'other'
 
-module.exports = class Maintenance extends NonMemoryCachingBaseService {
-  static get category() {
-    return 'other'
+  static route = {
+    base: 'maintenance',
+    pattern: ':maintained/:year(\\d{4})',
   }
 
-  static get route() {
-    return {
-      base: 'maintenance',
-      pattern: ':maintained/:year(\\d{4})',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Maintenance',
-        pattern: ':maintained(yes|no)/:year',
-        namedParams: {
-          maintained: 'yes',
-          year: '2019',
-        },
-        staticPreview: this.render({ isMaintained: false, targetYear: '2018' }),
-        keywords: ['maintained'],
+  static openApi = {
+    '/maintenance/{maintained}/{year}': {
+      get: {
+        summary: 'Maintenance',
+        parameters: pathParams(
+          {
+            name: 'maintained',
+            example: 'yes',
+          },
+          {
+            name: 'year',
+            example: '2019',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'maintained',
-    }
+  static defaultBadgeData = {
+    label: 'maintained',
   }
 
   static render({ isMaintained, isStale, targetYear, message }) {
@@ -44,7 +39,7 @@ module.exports = class Maintenance extends NonMemoryCachingBaseService {
     }
 
     return {
-      message: `${isStale ? `stale` : 'no!'} (as of ${targetYear})`,
+      message: `${isStale ? 'stale' : 'no!'} (as of ${targetYear})`,
       color: isStale ? undefined : 'red',
     }
   }

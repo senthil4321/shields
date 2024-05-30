@@ -1,54 +1,95 @@
-'use strict'
+import gql from 'graphql-tag'
+import Joi from 'joi'
+import parseLinkHeader from 'parse-link-header'
+import { InvalidResponse, pathParam, queryParam } from '../index.js'
+import { metric } from '../text-formatters.js'
+import { nonNegativeInteger } from '../validators.js'
+import { GithubAuthV4Service } from './github-auth-service.js'
+import {
+  transformErrors,
+  documentation,
+  httpErrorsFor,
+} from './github-helpers.js'
 
-const Joi = require('@hapi/joi')
-const { metric } = require('../text-formatters')
-const { nonNegativeInteger } = require('../validators')
-const { GithubAuthV3Service } = require('./github-auth-service')
-const { errorMessagesFor, documentation } = require('./github-helpers')
+const schema = Joi.object({
+  data: Joi.object({
+    repository: Joi.object({
+      object: Joi.object({
+        history: Joi.object({
+          totalCount: nonNegativeInteger,
+        }).required(),
+      }).allow(null),
+    }).required(),
+  }).required(),
+}).required()
 
-const schema = Joi.array()
-  .items(
-    Joi.object({
-      total: nonNegativeInteger,
-    })
-  )
-  .required()
+const queryParamSchema = Joi.object({
+  authorFilter: Joi.string(),
+})
 
-module.exports = class GithubCommitActivity extends GithubAuthV3Service {
-  static get category() {
-    return 'activity'
+export default class GitHubCommitActivity extends GithubAuthV4Service {
+  static category = 'activity'
+  static route = {
+    base: 'github/commit-activity',
+    pattern: ':interval(t|y|m|4w|w)/:user/:repo/:branch*',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'github/commit-activity',
-      pattern: ':interval(y|m|4w|w)/:user/:repo',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'GitHub commit activity',
-        // Override the pattern to omit the deprecated interval "4w".
-        pattern: ':interval(y|m|w)/:user/:repo',
-        namedParams: { interval: 'm', user: 'eslint', repo: 'eslint' },
-        staticPreview: this.render({ interval: 'm', commitCount: 457 }),
-        keywords: ['commits'],
-        documentation,
+  static openApi = {
+    '/github/commit-activity/{interval}/{user}/{repo}': {
+      get: {
+        summary: 'GitHub commit activity',
+        description: documentation,
+        parameters: [
+          pathParam({
+            name: 'interval',
+            example: 'm',
+            description: 'Commits in the last Week, Month, Year, or Total',
+            schema: {
+              type: 'string',
+              // Override the enum to omit the deprecated interval "4w".
+              enum: ['w', 'm', 'y', 't'],
+            },
+          }),
+          pathParam({ name: 'user', example: 'badges' }),
+          pathParam({ name: 'repo', example: 'squint' }),
+          queryParam({ name: 'authorFilter', example: 'calebcartwright' }),
+        ],
       },
-    ]
+    },
+    '/github/commit-activity/{interval}/{user}/{repo}/{branch}': {
+      get: {
+        summary: 'GitHub commit activity (branch)',
+        description: documentation,
+        parameters: [
+          pathParam({
+            name: 'interval',
+            example: 'm',
+            description: 'Commits in the last Week, Month, Year, or Total',
+            schema: {
+              type: 'string',
+              // Override the enum to omit the deprecated interval "4w".
+              enum: ['w', 'm', 'y', 't'],
+            },
+          }),
+          pathParam({ name: 'user', example: 'badges' }),
+          pathParam({ name: 'repo', example: 'squint' }),
+          pathParam({ name: 'branch', example: 'main' }),
+          queryParam({ name: 'authorFilter', example: 'calebcartwright' }),
+        ],
+      },
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'commit activity',
-      color: 'blue',
-    }
-  }
+  static defaultBadgeData = { label: 'commit activity', color: 'blue' }
 
-  static render({ interval, commitCount }) {
+  static render({ interval, commitCount, authorFilter }) {
+    // If total commits selected change label from commit activity to commits
+    const label = interval === 't' ? 'commits' : 'commit activity'
+    const authorFilterLabel = authorFilter ? ` by ${authorFilter}` : ''
+
     const intervalLabel = {
+      t: '',
       y: '/year',
       m: '/month',
       '4w': '/four weeks',
@@ -56,51 +97,120 @@ module.exports = class GithubCommitActivity extends GithubAuthV3Service {
     }[interval]
 
     return {
+      label: `${label}${authorFilterLabel}`,
       message: `${metric(commitCount)}${intervalLabel}`,
     }
   }
 
-  static transform({ interval, weekData }) {
-    const weekTotals = weekData.map(({ total }) => total)
-
-    if (interval === 'm') {
-      // To approximate the value for the past month, get the sum for the last
-      // four weeks and add a weighted value for the fifth week.
-      const fourWeeksValue = weekTotals
-        .slice(-4)
-        .reduce((sum, weekTotal) => sum + weekTotal, 0)
-      const fifthWeekValue = weekTotals.slice(-5)[0]
-      const averageWeeksPerMonth = 365 / 12 / 7
-      return (
-        fourWeeksValue + Math.round((averageWeeksPerMonth - 4) * fifthWeekValue)
-      )
-    }
-
-    let wantedWeekData
-    switch (interval) {
-      case 'y':
-        wantedWeekData = weekTotals
-        break
-      case '4w':
-        wantedWeekData = weekTotals.slice(-4)
-        break
-      case 'w':
-        wantedWeekData = weekTotals.slice(-2, -1)
-        break
-      default:
-        throw Error('Unhandled case')
-    }
-
-    return wantedWeekData.reduce((sum, weekTotal) => sum + weekTotal, 0)
+  async fetch({ interval, user, repo, branch = 'HEAD' }) {
+    const since = this.constructor.getIntervalQueryStartDate({ interval })
+    return this._requestGraphql({
+      query: gql`
+        query (
+          $user: String!
+          $repo: String!
+          $branch: String!
+          $since: GitTimestamp
+        ) {
+          repository(owner: $user, name: $repo) {
+            object(expression: $branch) {
+              ... on Commit {
+                history(since: $since) {
+                  totalCount
+                }
+              }
+            }
+          }
+        }
+      `,
+      variables: {
+        user,
+        repo,
+        branch,
+        since,
+      },
+      schema,
+      transformErrors,
+    })
   }
 
-  async handle({ interval, user, repo }) {
-    const weekData = await this._requestJson({
-      url: `/repos/${user}/${repo}/stats/commit_activity`,
-      schema,
-      errorMessages: errorMessagesFor(),
+  async fetchAuthorFilter({
+    interval,
+    user,
+    repo,
+    branch = 'HEAD',
+    authorFilter,
+  }) {
+    const since =
+      this.constructor.getIntervalQueryStartDate({ interval }) || undefined
+
+    return this._request({
+      url: `/repos/${user}/${repo}/commits`,
+      options: {
+        searchParams: {
+          sha: branch,
+          author: authorFilter,
+          per_page: '1',
+          since,
+        },
+      },
+      httpErrors: httpErrorsFor('repo or branch not found'),
     })
-    const commitCount = this.constructor.transform({ interval, weekData })
-    return this.constructor.render({ interval, commitCount })
+  }
+
+  static transform({ data }) {
+    const {
+      repository: { object: repo },
+    } = data
+
+    if (!repo) {
+      throw new InvalidResponse({ prettyMessage: 'invalid branch' })
+    }
+
+    return repo.history.totalCount
+  }
+
+  static transformAuthorFilter({ res }) {
+    const parsed = parseLinkHeader(res.headers.link)
+
+    if (!parsed) {
+      return 0
+    }
+
+    return parsed.last.page
+  }
+
+  static getIntervalQueryStartDate({ interval }) {
+    const now = new Date()
+
+    if (interval === 't') {
+      return null
+    } else if (interval === 'y') {
+      now.setUTCFullYear(now.getUTCFullYear() - 1)
+    } else if (interval === 'm' || interval === '4w') {
+      now.setUTCDate(now.getUTCDate() - 30)
+    } else {
+      now.setUTCDate(now.getUTCDate() - 7)
+    }
+
+    return now.toISOString()
+  }
+
+  async handle({ interval, user, repo, branch }, { authorFilter }) {
+    let commitCount
+    if (authorFilter) {
+      const authorFilterRes = await this.fetchAuthorFilter({
+        interval,
+        user,
+        repo,
+        branch,
+        authorFilter,
+      })
+      commitCount = this.constructor.transformAuthorFilter(authorFilterRes)
+    } else {
+      const json = await this.fetch({ interval, user, repo, branch })
+      commitCount = this.constructor.transform(json)
+    }
+    return this.constructor.render({ interval, commitCount, authorFilter })
   }
 }

@@ -1,7 +1,6 @@
-'use strict'
-
-const { nonNegativeInteger } = require('../validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { nonNegativeInteger } from '../validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('renders correctly')
   .get('/shields/2988.json')
@@ -57,7 +56,7 @@ t.create('renders correctly')
           role: 'BACKER',
           tier: 'monthly backer',
         },
-      ])
+      ]),
   )
   .expectBadge({
     label: 'monthly backers',
@@ -71,7 +70,7 @@ t.create('shows 0 when given a non existent tier')
   .intercept(nock =>
     nock('https://opencollective.com/')
       .get('/shields/members/all.json?TierId=1234567890')
-      .reply(200, [])
+      .reply(200, []),
   )
   .expectBadge({
     label: 'new tier',

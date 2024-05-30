@@ -1,43 +1,28 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { metric } = require('../text-formatters')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import { metric } from '../text-formatters.js'
+import { BaseJsonService, pathParams } from '../index.js'
 
 const schema = Joi.array()
   .items(Joi.array().items(Joi.number().required(), Joi.number().required()))
   .required()
 
-module.exports = class BStatsServers extends BaseJsonService {
-  static get category() {
-    return 'other'
-  }
+export default class BStatsServers extends BaseJsonService {
+  static category = 'other'
+  static route = { base: 'bstats/servers', pattern: ':pluginid' }
 
-  static get route() {
-    return {
-      base: 'bstats/servers',
-      pattern: ':pluginid',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'bStats Servers',
-        namedParams: {
-          pluginid: '1',
-        },
-        staticPreview: this.render({ servers: 57479 }),
+  static openApi = {
+    '/bstats/servers/{pluginid}': {
+      get: {
+        summary: 'bStats Servers',
+        parameters: pathParams({
+          name: 'pluginid',
+          example: '1',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'servers',
-      color: 'blue',
-    }
-  }
+  static defaultBadgeData = { label: 'servers', color: 'blue' }
 
   static render({ servers }) {
     return {
@@ -51,7 +36,7 @@ module.exports = class BStatsServers extends BaseJsonService {
     return this._requestJson({
       schema,
       options: {
-        qs: {
+        searchParams: {
           maxElements: 1,
         },
       },

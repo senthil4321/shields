@@ -1,8 +1,6 @@
-'use strict'
-
-const emojic = require('emojic')
-const Joi = require('@hapi/joi')
-const trace = require('./trace')
+import emojic from 'emojic'
+import Joi from 'joi'
+import trace from './trace.js'
 
 function validate(
   {
@@ -14,7 +12,7 @@ function validate(
     allowAndStripUnknownKeys = true,
   },
   data,
-  schema
+  schema,
 ) {
   if (!schema || !Joi.isSchema(schema)) {
     throw Error('A Joi schema is required')
@@ -30,7 +28,7 @@ function validate(
       'validate',
       emojic.womanShrugging,
       traceErrorMessage,
-      error.message
+      error.message,
     )
 
     let prettyMessage = prettyErrorMessage
@@ -50,4 +48,4 @@ function validate(
   }
 }
 
-module.exports = validate
+export default validate

@@ -1,47 +1,37 @@
-'use strict'
+import { pathParams } from '../index.js'
+import { renderDownloadsBadge } from '../downloads.js'
+import { BasePuppetForgeModulesService } from './puppetforge-base.js'
 
-const { downloadCount } = require('../color-formatters')
-const { metric } = require('../text-formatters')
-const { BasePuppetForgeModulesService } = require('./puppetforge-base')
+export default class PuppetforgeModuleDownloads extends BasePuppetForgeModulesService {
+  static category = 'downloads'
 
-module.exports = class PuppetforgeModuleDownloads extends BasePuppetForgeModulesService {
-  static get category() {
-    return 'downloads'
+  static route = {
+    base: 'puppetforge/dt',
+    pattern: ':user/:moduleName',
   }
 
-  static get route() {
-    return {
-      base: 'puppetforge/dt',
-      pattern: ':user/:moduleName',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Puppet Forge downloads',
-        namedParams: {
-          user: 'camptocamp',
-          moduleName: 'openldap',
-        },
-        staticPreview: this.render({ downloads: 720000 }),
+  static openApi = {
+    '/puppetforge/dt/{user}/{moduleName}': {
+      get: {
+        summary: 'Puppet Forge downloads',
+        parameters: pathParams(
+          {
+            name: 'user',
+            example: 'camptocamp',
+          },
+          {
+            name: 'moduleName',
+            example: 'openldap',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'downloads' }
-  }
-
-  static render({ downloads }) {
-    return {
-      message: metric(downloads),
-      color: downloadCount(downloads),
-    }
-  }
+  static defaultBadgeData = { label: 'downloads' }
 
   async handle({ user, moduleName }) {
-    const data = await this.fetch({ user, moduleName })
-    return this.constructor.render({ downloads: data.downloads })
+    const { downloads } = await this.fetch({ user, moduleName })
+    return renderDownloadsBadge({ downloads })
   }
 }

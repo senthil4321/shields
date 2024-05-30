@@ -1,14 +1,12 @@
-'use strict'
-
-const { test, given } = require('sazerac')
-const coalesce = require('./coalesce')
+import { test, given } from 'sazerac'
+import coalesce from './coalesce.js'
 
 // Sticking with our one-line spread implementation, and defaulting to
 // `undefined` instead of `null`, though h/t to
 // https://github.com/royriojas/coalescy for these tests!
 
 describe('coalesce', function () {
-  test(coalesce, function () {
+  test(coalesce, () => {
     given().expect(undefined)
     given(null, []).expect([])
     given(null, [], {}).expect([])

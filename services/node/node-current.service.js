@@ -1,26 +1,60 @@
-'use strict'
+import { pathParam, queryParam } from '../index.js'
+import { packageNameDescription } from '../npm/npm-base.js'
+import NodeVersionBase from './node-base.js'
+import { versionColorForRangeCurrent } from './node-version-color.js'
 
-const NodeVersionBase = require('./node-base')
-const { versionColorForRangeCurrent } = require('./node-version-color')
+const description = `<p>This badge indicates whether the package supports the <b>latest</b> release of node.</p>
+<p>The node version support is retrieved from the <code>engines.node</code> section in package.json.</p>`
 
-module.exports = class NodeCurrentVersion extends NodeVersionBase {
-  static get path() {
-    return 'v'
+export default class NodeCurrentVersion extends NodeVersionBase {
+  static route = this.buildRoute('node/v', { withTag: true })
+
+  static defaultBadgeData = {
+    label: 'node',
   }
 
-  static get defaultBadgeData() {
-    return { label: 'node' }
-  }
+  static type = 'current'
 
-  static get type() {
-    return 'current'
-  }
+  static colorResolver = versionColorForRangeCurrent
 
-  static get colorResolver() {
-    return versionColorForRangeCurrent
-  }
-
-  static get documentation() {
-    return `This badge indicates whether the package supports the <b>latest</b> release of node`
+  static openApi = {
+    '/node/v/{packageName}': {
+      get: {
+        summary: 'Node Current',
+        description,
+        parameters: [
+          pathParam({
+            name: 'packageName',
+            example: 'passport',
+            description: packageNameDescription,
+          }),
+          queryParam({
+            name: 'registry_uri',
+            example: 'https://registry.npmjs.com',
+          }),
+        ],
+      },
+    },
+    '/node/v/{packageName}/{tag}': {
+      get: {
+        summary: 'Node Current (with tag)',
+        description,
+        parameters: [
+          pathParam({
+            name: 'packageName',
+            example: 'passport',
+            description: packageNameDescription,
+          }),
+          pathParam({
+            name: 'tag',
+            example: 'latest',
+          }),
+          queryParam({
+            name: 'registry_uri',
+            example: 'https://registry.npmjs.com',
+          }),
+        ],
+      },
+    },
   }
 }

@@ -1,11 +1,12 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { latest, renderVersionBadge } = require('../version')
-const { BaseJsonService, redirector } = require('..')
+import Joi from 'joi'
+import { latest, renderVersionBadge } from '../version.js'
+import { BaseJsonService, redirector, pathParam, queryParam } from '../index.js'
+import { baseDescription } from './pub-common.js'
 
 const schema = Joi.object({
-  versions: Joi.array().items(Joi.string()).required(),
+  versions: Joi.array()
+    .items(Joi.object({ version: Joi.string().required() }))
+    .required(),
 }).required()
 
 const queryParamSchema = Joi.object({
@@ -13,51 +14,47 @@ const queryParamSchema = Joi.object({
 }).required()
 
 class PubVersion extends BaseJsonService {
-  static get category() {
-    return 'version'
+  static category = 'version'
+
+  static route = {
+    base: 'pub/v',
+    pattern: ':packageName',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'pub/v',
-      pattern: ':packageName',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Pub Version',
-        namedParams: { packageName: 'box2d' },
-        staticPreview: renderVersionBadge({ version: 'v0.4.0' }),
-        keywords: ['dart', 'dartlang'],
+  static openApi = {
+    '/pub/v/{packageName}': {
+      get: {
+        summary: 'Pub Version',
+        description: baseDescription,
+        parameters: [
+          pathParam({
+            name: 'packageName',
+            example: 'box2d',
+          }),
+          queryParam({
+            name: 'include_prereleases',
+            schema: { type: 'boolean' },
+            example: null,
+          }),
+        ],
       },
-      {
-        title: 'Pub Version (including pre-releases)',
-        namedParams: { packageName: 'box2d' },
-        queryParams: { include_prereleases: null },
-        staticPreview: renderVersionBadge({ version: 'v0.4.0' }),
-        keywords: ['dart', 'dartlang'],
-      },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'pub' }
-  }
+  static defaultBadgeData = { label: 'pub' }
 
   async fetch({ packageName }) {
     return this._requestJson({
       schema,
-      url: `https://pub.dartlang.org/packages/${packageName}.json`,
+      url: `https://pub.dev/api/packages/${packageName}`,
     })
   }
 
   async handle({ packageName }, queryParams) {
     const data = await this.fetch({ packageName })
     const includePre = queryParams.include_prereleases !== undefined
-    const versions = data.versions
+    const versions = data.versions.map(x => x.version)
     const version = latest(versions, { pre: includePre })
     return renderVersionBadge({ version })
   }
@@ -76,4 +73,4 @@ const PubVersionRedirector = redirector({
   dateAdded: new Date('2019-12-15'),
 })
 
-module.exports = { PubVersion, PubVersionRedirector }
+export { PubVersion, PubVersionRedirector }

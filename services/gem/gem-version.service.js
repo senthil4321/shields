@@ -1,8 +1,7 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { renderVersionBadge } = require('../version')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import { renderVersionBadge } from '../version.js'
+import { BaseJsonService, pathParam, queryParam } from '../index.js'
+import { description, latest, versionColor } from './gem-helpers.js'
 
 const schema = Joi.object({
   // In most cases `version` will be a SemVer but the registry doesn't
@@ -10,35 +9,46 @@ const schema = Joi.object({
   version: Joi.string().required(),
 }).required()
 
-module.exports = class GemVersion extends BaseJsonService {
-  static get category() {
-    return 'version'
-  }
+const versionSchema = Joi.array()
+  .items(
+    Joi.object({
+      number: Joi.string().required(),
+    }),
+  )
+  .min(1)
+  .required()
 
-  static get route() {
-    return {
-      base: 'gem/v',
-      pattern: ':gem',
-    }
-  }
+const queryParamSchema = Joi.object({
+  include_prereleases: Joi.equal(''),
+}).required()
 
-  static get examples() {
-    return [
-      {
-        title: 'Gem',
-        namedParams: { gem: 'formatador' },
-        staticPreview: this.render({ version: '2.1.0' }),
-        keywords: ['ruby'],
+export default class GemVersion extends BaseJsonService {
+  static category = 'version'
+  static route = { base: 'gem/v', pattern: ':gem', queryParamSchema }
+  static openApi = {
+    '/gem/v/{gem}': {
+      get: {
+        summary: 'Gem Version',
+        description,
+        parameters: [
+          pathParam({
+            name: 'gem',
+            example: 'formatador',
+          }),
+          queryParam({
+            name: 'include_prereleases',
+            schema: { type: 'boolean' },
+            example: null,
+          }),
+        ],
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'gem' }
-  }
+  static defaultBadgeData = { label: 'gem' }
 
   static render({ version }) {
-    return renderVersionBadge({ version })
+    return renderVersionBadge({ version, versionFormatter: versionColor })
   }
 
   async fetch({ gem }) {
@@ -48,8 +58,21 @@ module.exports = class GemVersion extends BaseJsonService {
     })
   }
 
-  async handle({ gem }) {
-    const { version } = await this.fetch({ gem })
-    return this.constructor.render({ version })
+  async fetchLatest({ gem }) {
+    return this._requestJson({
+      schema: versionSchema,
+      url: `https://rubygems.org/api/v1/versions/${gem}.json`,
+    })
+  }
+
+  async handle({ gem }, queryParams) {
+    if (queryParams && typeof queryParams.include_prereleases !== 'undefined') {
+      const data = await this.fetchLatest({ gem })
+      const versions = data.map(version => version.number)
+      return this.constructor.render({ version: latest(versions) })
+    } else {
+      const { version } = await this.fetch({ gem })
+      return this.constructor.render({ version })
+    }
   }
 }

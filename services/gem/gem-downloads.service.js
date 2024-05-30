@@ -1,14 +1,15 @@
-'use strict'
-
-const semver = require('semver')
-const Joi = require('@hapi/joi')
-const { downloadCount } = require('../color-formatters')
-const { metric } = require('../text-formatters')
-const { latest: latestVersion } = require('../version')
-const { nonNegativeInteger } = require('../validators')
-const { BaseJsonService, InvalidParameter, InvalidResponse } = require('..')
-
-const keywords = ['ruby']
+import semver from 'semver'
+import Joi from 'joi'
+import { renderDownloadsBadge } from '../downloads.js'
+import { latest as latestVersion } from '../version.js'
+import { nonNegativeInteger } from '../validators.js'
+import {
+  BaseJsonService,
+  InvalidParameter,
+  InvalidResponse,
+  pathParams,
+} from '../index.js'
+import { description } from './gem-helpers.js'
 
 const gemSchema = Joi.object({
   downloads: nonNegativeInteger,
@@ -21,100 +22,65 @@ const versionSchema = Joi.array()
       prerelease: Joi.boolean().required(),
       number: Joi.string().required(),
       downloads_count: nonNegativeInteger,
-    })
+    }),
   )
   .min(1)
   .required()
 
-module.exports = class GemDownloads extends BaseJsonService {
-  static get category() {
-    return 'downloads'
+export default class GemDownloads extends BaseJsonService {
+  static category = 'downloads'
+  static route = { base: 'gem', pattern: ':variant(dt|dtv|dv)/:gem/:version?' }
+  static openApi = {
+    '/gem/dt/{gem}': {
+      get: {
+        summary: 'Gem Total Downloads',
+        description,
+        parameters: pathParams({
+          name: 'gem',
+          example: 'rails',
+        }),
+      },
+    },
+    '/gem/dtv/{gem}': {
+      get: {
+        summary: 'Gem Downloads (for latest version)',
+        description,
+        parameters: pathParams({
+          name: 'gem',
+          example: 'rails',
+        }),
+      },
+    },
+    '/gem/dv/{gem}/{version}': {
+      get: {
+        summary: 'Gem Downloads (for specified version)',
+        description,
+        parameters: pathParams(
+          {
+            name: 'gem',
+            example: 'rails',
+          },
+          {
+            name: 'version',
+            example: '4.1.0',
+          },
+        ),
+      },
+    },
   }
 
-  static get route() {
-    return {
-      base: 'gem',
-      pattern: ':variant(dt|dtv|dv)/:gem/:version?',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Gem',
-        pattern: 'dv/:gem/:version',
-        namedParams: {
-          gem: 'rails',
-          version: 'stable',
-        },
-        staticPreview: this.render({
-          variant: 'dv',
-          version: 'stable',
-          downloads: 70000,
-        }),
-        keywords,
-      },
-      {
-        title: 'Gem',
-        pattern: 'dv/:gem/:version',
-        namedParams: {
-          gem: 'rails',
-          version: '4.1.0',
-        },
-        staticPreview: this.render({
-          variant: 'dv',
-          version: '4.1.0',
-          downloads: 50000,
-        }),
-        keywords,
-      },
-      {
-        title: 'Gem',
-        pattern: 'dtv/:gem',
-        namedParams: { gem: 'rails' },
-        staticPreview: this.render({
-          variant: 'dtv',
-          downloads: 70000,
-        }),
-        keywords,
-      },
-      {
-        title: 'Gem',
-        pattern: 'dt/:gem',
-        namedParams: { gem: 'rails' },
-        staticPreview: this.render({
-          variant: 'dt',
-          downloads: 900000,
-        }),
-        keywords,
-      },
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return { label: 'downloads' }
-  }
+  static defaultBadgeData = { label: 'downloads' }
 
   static render({ variant, version, downloads }) {
-    let label
-    if (version) {
-      label = `downloads@${version}`
-    } else if (variant === 'dtv') {
-      label = 'downloads@latest'
-    }
-
-    return {
-      label,
-      message: metric(downloads),
-      color: downloadCount(downloads),
-    }
+    version = !version && variant === 'dtv' ? 'latest' : version
+    return renderDownloadsBadge({ downloads, version })
   }
 
   async fetchDownloadCountForVersion({ gem, version }) {
     const json = await this._requestJson({
       url: `https://rubygems.org/api/v1/versions/${gem}.json`,
       schema: versionSchema,
-      errorMessages: {
+      httpErrors: {
         404: 'gem not found',
       },
     })
@@ -122,7 +88,9 @@ module.exports = class GemDownloads extends BaseJsonService {
     let wantedVersion
     if (version === 'stable') {
       wantedVersion = latestVersion(
-        json.filter(({ prerelease }) => !prerelease).map(({ number }) => number)
+        json
+          .filter(({ prerelease }) => !prerelease)
+          .map(({ number }) => number),
       )
     } else {
       wantedVersion = version
@@ -139,16 +107,14 @@ module.exports = class GemDownloads extends BaseJsonService {
   }
 
   async fetchDownloadCountForGem({ gem }) {
-    const {
-      downloads: totalDownloads,
-      version_downloads: versionDownloads,
-    } = await this._requestJson({
-      url: `https://rubygems.org/api/v1/gems/${gem}.json`,
-      schema: gemSchema,
-      errorMessages: {
-        404: 'gem not found',
-      },
-    })
+    const { downloads: totalDownloads, version_downloads: versionDownloads } =
+      await this._requestJson({
+        url: `https://rubygems.org/api/v1/gems/${gem}.json`,
+        schema: gemSchema,
+        httpErrors: {
+          404: 'gem not found',
+        },
+      })
     return { totalDownloads, versionDownloads }
   }
 
@@ -167,10 +133,8 @@ module.exports = class GemDownloads extends BaseJsonService {
       }
       downloads = await this.fetchDownloadCountForVersion({ gem, version })
     } else {
-      const {
-        totalDownloads,
-        versionDownloads,
-      } = await this.fetchDownloadCountForGem({ gem, variant })
+      const { totalDownloads, versionDownloads } =
+        await this.fetchDownloadCountForGem({ gem, variant })
       downloads = variant === 'dtv' ? versionDownloads : totalDownloads
     }
     return this.constructor.render({ variant, version, downloads })

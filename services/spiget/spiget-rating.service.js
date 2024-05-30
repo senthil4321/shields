@@ -1,51 +1,38 @@
-'use strict'
+import { pathParams } from '../index.js'
+import { starRating, metric } from '../text-formatters.js'
+import { floorCount } from '../color-formatters.js'
+import { BaseSpigetService, description } from './spiget-base.js'
 
-const { starRating, metric } = require('../text-formatters')
-const { floorCount } = require('../color-formatters')
-const { BaseSpigetService, documentation, keywords } = require('./spiget-base')
+export default class SpigetRatings extends BaseSpigetService {
+  static category = 'rating'
 
-module.exports = class SpigetRatings extends BaseSpigetService {
-  static get category() {
-    return 'rating'
+  static route = {
+    base: 'spiget',
+    pattern: ':format(rating|stars)/:resourceId',
   }
 
-  static get route() {
-    return {
-      base: 'spiget',
-      pattern: ':format(rating|stars)/:resourceId',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Spiget Stars',
-        pattern: 'stars/:resourceId',
-        namedParams: {
-          resourceId: '9089',
-        },
-        staticPreview: this.render({
-          format: 'stars',
-          total: 325,
-          average: 4.5,
-        }),
-        documentation,
+  static openApi = {
+    '/spiget/{format}/{resourceId}': {
+      get: {
+        summary: 'Spiget Rating',
+        description,
+        parameters: pathParams(
+          {
+            name: 'format',
+            example: 'rating',
+            schema: { type: 'string', enum: this.getEnum('format') },
+          },
+          {
+            name: 'resourceId',
+            example: '9089',
+          },
+        ),
       },
-      {
-        title: 'Spiget Rating',
-        pattern: 'rating/:resourceId',
-        namedParams: {
-          resourceId: '9089',
-        },
-        staticPreview: this.render({ total: 325, average: 4.5 }),
-        documentation,
-        keywords,
-      },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'rating' }
+  static defaultBadgeData = {
+    label: 'rating',
   }
 
   static render({ format, total, average }) {
@@ -64,7 +51,7 @@ module.exports = class SpigetRatings extends BaseSpigetService {
     return this.constructor.render({
       format,
       total: rating.count,
-      average: rating.average,
+      average: rating.average.toFixed(2),
     })
   }
 }

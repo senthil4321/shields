@@ -1,9 +1,7 @@
-'use strict'
-
-const { expect } = require('chai')
-const { test, given } = require('sazerac')
-const { InvalidResponse } = require('..')
-const LiberapayGoal = require('./liberapay-goal.service')
+import { expect } from 'chai'
+import { test, given } from 'sazerac'
+import { InvalidResponse } from '../index.js'
+import LiberapayGoal from './liberapay-goal.service.js'
 
 describe('LiberapayGoal', function () {
   test(LiberapayGoal.prototype.transform, () => {
@@ -17,7 +15,7 @@ describe('LiberapayGoal', function () {
 
   it('throws InvalidResponse on missing goals', function () {
     expect(() =>
-      LiberapayGoal.prototype.transform({ goal: null, receiving: null })
+      LiberapayGoal.prototype.transform({ goal: null, receiving: null }),
     )
       .to.throw(InvalidResponse)
       .with.property('prettyMessage', 'no public goals')

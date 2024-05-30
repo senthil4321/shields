@@ -1,6 +1,10 @@
-'use strict'
+/**
+ * Common functions and schemas for tasks related to build status.
+ *
+ * @module
+ */
 
-const Joi = require('@hapi/joi')
+import Joi from 'joi'
 
 const greenStatuses = [
   'fixed',
@@ -14,7 +18,9 @@ const greenStatuses = [
 const orangeStatuses = ['partially succeeded', 'unstable', 'timeout']
 
 const redStatuses = [
+  'broken',
   'error',
+  'errored',
   'failed',
   'failing',
   'failure',
@@ -22,9 +28,11 @@ const redStatuses = [
 ]
 
 const otherStatuses = [
+  'aborted',
   'building',
   'canceled',
   'cancelled',
+  'created',
   'expired',
   'initiated',
   'no builds',
@@ -48,8 +56,23 @@ const allStatuses = greenStatuses
   .concat(redStatuses)
   .concat(otherStatuses)
 
+/**
+ * Joi schema for validating Build Status.
+ * Checks if the build status is present in the list of allowed build status.
+ *
+ * @type {Joi}
+ */
 const isBuildStatus = Joi.equal(...allStatuses)
 
+/**
+ * Handles rendering concerns of badges that display build status.
+ * Determines the message and color of the badge according to the build status.
+ *
+ * @param {object} attrs Refer to individual attributes
+ * @param {string} [attrs.label] If provided then badge label is set to this value
+ * @param {string} attrs.status Build status
+ * @returns {object} Badge with label, message and color properties
+ */
 function renderBuildStatusBadge({ label, status }) {
   let message
   let color
@@ -72,4 +95,4 @@ function renderBuildStatusBadge({ label, status }) {
   }
 }
 
-module.exports = { isBuildStatus, renderBuildStatusBadge }
+export { isBuildStatus, renderBuildStatusBadge }

@@ -1,10 +1,8 @@
-'use strict'
-
-const { expect } = require('chai')
-const nock = require('nock')
-const { cleanUpNockAfterEach, defaultContext } = require('../test-helpers')
-const JiraIssue = require('./jira-issue.service')
-const { user, pass, host, config } = require('./jira-test-helpers')
+import { expect } from 'chai'
+import nock from 'nock'
+import { cleanUpNockAfterEach, defaultContext } from '../test-helpers.js'
+import JiraIssue from './jira-issue.service.js'
+import { user, pass, host, config } from './jira-test-helpers.js'
 
 describe('JiraIssue', function () {
   cleanUpNockAfterEach()
@@ -24,8 +22,8 @@ describe('JiraIssue', function () {
         {
           issueKey: 'secure-234',
         },
-        { baseUrl: `https://${host}` }
-      )
+        { baseUrl: `https://${host}` },
+      ),
     ).to.deep.equal({
       label: 'secure-234',
       message: 'in progress',

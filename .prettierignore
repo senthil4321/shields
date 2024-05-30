@@ -2,13 +2,13 @@ package.json
 package-lock.json
 /__snapshots__
 /.next
-/.cache
+.cache
 /api-docs
 /build
-/public
+public
 /coverage
 private/*.json
 /.nyc_output
 analytics.json
-supported-features.json
-service-definitions.yml
+frontend/.docusaurus
+frontend/categories

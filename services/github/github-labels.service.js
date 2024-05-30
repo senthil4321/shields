@@ -1,45 +1,39 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { GithubAuthV3Service } = require('./github-auth-service')
-const { documentation, errorMessagesFor } = require('./github-helpers')
+import Joi from 'joi'
+import { pathParams } from '../index.js'
+import { GithubAuthV3Service } from './github-auth-service.js'
+import { documentation, httpErrorsFor } from './github-helpers.js'
 
 const schema = Joi.object({
   color: Joi.string().hex().required(),
 }).required()
 
-module.exports = class GithubLabels extends GithubAuthV3Service {
-  static get category() {
-    return 'issue-tracking'
-  }
-
-  static get route() {
-    return {
-      base: 'github/labels',
-      pattern: ':user/:repo/:name',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'GitHub labels',
-        namedParams: {
-          user: 'atom',
-          repo: 'atom',
-          name: 'help-wanted',
-        },
-        staticPreview: this.render({ name: 'help-wanted', color: '#159818' }),
-        documentation,
+export default class GithubLabels extends GithubAuthV3Service {
+  static category = 'issue-tracking'
+  static route = { base: 'github/labels', pattern: ':user/:repo/:name' }
+  static openApi = {
+    '/github/labels/{user}/{repo}/{name}': {
+      get: {
+        summary: 'GitHub labels',
+        description: documentation,
+        parameters: pathParams(
+          {
+            name: 'user',
+            example: 'atom',
+          },
+          {
+            name: 'repo',
+            example: 'atom',
+          },
+          {
+            name: 'name',
+            example: 'help-wanted',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: ' ',
-    }
-  }
+  static defaultBadgeData = { label: ' ' }
 
   static render({ name, color }) {
     return {
@@ -52,7 +46,7 @@ module.exports = class GithubLabels extends GithubAuthV3Service {
     return this._requestJson({
       url: `/repos/${user}/${repo}/labels/${name}`,
       schema,
-      errorMessages: errorMessagesFor(`repo or label not found`),
+      httpErrors: httpErrorsFor('repo or label not found'),
     })
   }
 

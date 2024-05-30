@@ -1,21 +1,19 @@
-'use strict'
-
-const { ServiceTester } = require('../tester')
-const {
+import { ServiceTester } from '../tester.js'
+import {
   isMetric,
   isVPlusDottedVersionNClauses,
   isVPlusDottedVersionNClausesWithOptionalSuffix,
-} = require('../test-validators')
-const {
+} from '../test-validators.js'
+import {
   queryIndex,
   nuGetV3VersionJsonWithDash,
   nuGetV3VersionJsonFirstCharZero,
   nuGetV3VersionJsonFirstCharNotZero,
   nuGetV3VersionJsonBuildMetadataWithDash,
-} = require('../nuget-fixtures')
-const { invalidJSON } = require('../response-fixtures')
+} from '../nuget-fixtures.js'
+import { invalidJSON } from '../response-fixtures.js'
 
-const t = (module.exports = new ServiceTester({ id: 'nuget', title: 'NuGet' }))
+export const t = new ServiceTester({ id: 'nuget', title: 'NuGet' })
 
 // downloads
 
@@ -33,14 +31,14 @@ t.create('total downloads (not found)')
 t.create('total downloads (unexpected second response)')
   .get('/dt/Microsoft.AspNetCore.Mvc.json')
   .intercept(nock =>
-    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex)
+    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2',
       )
-      .reply(invalidJSON)
+      .reply(invalidJSON),
   )
   .expectBadge({ label: 'downloads', message: 'unparseable json response' })
 
@@ -56,14 +54,14 @@ t.create('version (valid)')
 t.create('version (yellow badge)')
   .get('/v/Microsoft.AspNetCore.Mvc.json')
   .intercept(nock =>
-    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex)
+    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2',
       )
-      .reply(200, nuGetV3VersionJsonWithDash)
+      .reply(200, nuGetV3VersionJsonWithDash),
   )
   .expectBadge({
     label: 'nuget',
@@ -74,14 +72,14 @@ t.create('version (yellow badge)')
 t.create('version (orange badge)')
   .get('/v/Microsoft.AspNetCore.Mvc.json')
   .intercept(nock =>
-    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex)
+    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2',
       )
-      .reply(200, nuGetV3VersionJsonFirstCharZero)
+      .reply(200, nuGetV3VersionJsonFirstCharZero),
   )
   .expectBadge({
     label: 'nuget',
@@ -92,14 +90,14 @@ t.create('version (orange badge)')
 t.create('version (blue badge)')
   .get('/v/Microsoft.AspNetCore.Mvc.json')
   .intercept(nock =>
-    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex)
+    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2',
       )
-      .reply(200, nuGetV3VersionJsonFirstCharNotZero)
+      .reply(200, nuGetV3VersionJsonFirstCharNotZero),
   )
   .expectBadge({
     label: 'nuget',
@@ -111,12 +109,12 @@ t.create('version (blue badge)')
 t.create('version (build metadata with -)')
   .get('/v/MongoFramework.json')
   .intercept(nock =>
-    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex)
+    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get('/query?q=packageid%3Amongoframework&prerelease=true&semVerLevel=2')
-      .reply(200, nuGetV3VersionJsonBuildMetadataWithDash)
+      .reply(200, nuGetV3VersionJsonBuildMetadataWithDash),
   )
   .expectBadge({
     label: 'nuget',
@@ -131,14 +129,14 @@ t.create('version (not found)')
 t.create('version (unexpected second response)')
   .get('/v/Microsoft.AspNetCore.Mvc.json')
   .intercept(nock =>
-    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex)
+    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2',
       )
-      .reply(invalidJSON)
+      .reply(invalidJSON),
   )
   .expectBadge({ label: 'nuget', message: 'unparseable json response' })
 
@@ -154,14 +152,14 @@ t.create('version (pre) (valid)')
 t.create('version (pre) (yellow badge)')
   .get('/vpre/Microsoft.AspNetCore.Mvc.json')
   .intercept(nock =>
-    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex)
+    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2',
       )
-      .reply(200, nuGetV3VersionJsonWithDash)
+      .reply(200, nuGetV3VersionJsonWithDash),
   )
   .expectBadge({
     label: 'nuget',
@@ -172,14 +170,14 @@ t.create('version (pre) (yellow badge)')
 t.create('version (pre) (orange badge)')
   .get('/vpre/Microsoft.AspNetCore.Mvc.json')
   .intercept(nock =>
-    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex)
+    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2',
       )
-      .reply(200, nuGetV3VersionJsonFirstCharZero)
+      .reply(200, nuGetV3VersionJsonFirstCharZero),
   )
   .expectBadge({
     label: 'nuget',
@@ -190,14 +188,14 @@ t.create('version (pre) (orange badge)')
 t.create('version (pre) (blue badge)')
   .get('/vpre/Microsoft.AspNetCore.Mvc.json')
   .intercept(nock =>
-    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex)
+    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2',
       )
-      .reply(200, nuGetV3VersionJsonFirstCharNotZero)
+      .reply(200, nuGetV3VersionJsonFirstCharNotZero),
   )
   .expectBadge({
     label: 'nuget',
@@ -212,13 +210,13 @@ t.create('version (pre) (not found)')
 t.create('version (pre) (unexpected second response)')
   .get('/vpre/Microsoft.AspNetCore.Mvc.json')
   .intercept(nock =>
-    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex)
+    nock('https://api.nuget.org').get('/v3/index.json').reply(200, queryIndex),
   )
   .intercept(nock =>
     nock('https://api-v2v3search-0.nuget.org')
       .get(
-        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2'
+        '/query?q=packageid%3Amicrosoft.aspnetcore.mvc&prerelease=true&semVerLevel=2',
       )
-      .reply(invalidJSON)
+      .reply(invalidJSON),
   )
   .expectBadge({ label: 'nuget', message: 'unparseable json response' })

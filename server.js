@@ -1,26 +1,24 @@
-'use strict'
-/* eslint-disable import/order */
-
-const fs = require('fs')
-const path = require('path')
-
-require('dotenv').config()
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import configModule from 'config'
+import * as Sentry from '@sentry/node'
+import Server from './core/server/server.js'
 
 // Set up Sentry reporting as early in the process as possible.
-const config = require('config').util.toObject()
-const Sentry = require('@sentry/node')
+const config = configModule.util.toObject()
 const disabledIntegrations = ['Console', 'Http']
 Sentry.init({
   dsn: process.env.SENTRY_DSN || config.private.sentry_dsn,
   integrations: integrations => {
     const filtered = integrations.filter(
-      integration => !disabledIntegrations.includes(integration.name)
+      integration => !disabledIntegrations.includes(integration.name),
     )
     if (filtered.length !== integrations.length - disabledIntegrations.length) {
       throw Error(
         `An error occurred while filtering integrations. The following inetgrations were found: ${integrations.map(
-          ({ name }) => name
-        )}`
+          ({ name }) => name,
+        )}`,
       )
     }
     return filtered
@@ -37,22 +35,31 @@ if (process.argv[3]) {
 console.log('Configuration:')
 console.dir(config.public, { depth: null })
 
-const legacySecretsPath = path.join(__dirname, 'private', 'secret.json')
-if (fs.existsSync(legacySecretsPath)) {
+if (fs.existsSync('.env')) {
   console.error(
-    `Legacy secrets file found at ${legacySecretsPath}. It should be deleted and secrets replaced with environment variables or config/local.yml`
+    'Legacy .env file found. It should be deleted and replaced with environment variables or config/local.yml',
   )
   process.exit(1)
 }
 
-const Server = require('./core/server/server')
-const server = (module.exports = new Server(config))
+if (config.private.redis_url != null) {
+  console.error(
+    'RedisTokenPersistence has been removed. Migrate to SqlTokenPersistence',
+  )
+  process.exit(1)
+}
 
-;(async () => {
-  try {
-    await server.start()
-  } catch (e) {
-    console.error(e)
-    process.exit(1)
-  }
-})()
+const legacySecretsPath = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  'private',
+  'secret.json',
+)
+if (fs.existsSync(legacySecretsPath)) {
+  console.error(
+    `Legacy secrets file found at ${legacySecretsPath}. It should be deleted and secrets replaced with environment variables or config/local.yml`,
+  )
+  process.exit(1)
+}
+export const server = new Server(config)
+
+await server.start()

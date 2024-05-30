@@ -1,8 +1,6 @@
-'use strict'
-
-const { expect } = require('chai')
-const { NotFound, InvalidResponse, Inaccessible } = require('./errors')
-const checkErrorResponse = require('./check-error-response')
+import { expect } from 'chai'
+import { NotFound, InvalidResponse, Inaccessible } from './errors.js'
+import checkErrorResponse from './check-error-response.js'
 
 describe('async error handler', function () {
   const buffer = Buffer.from('some stuff')
@@ -47,6 +45,42 @@ describe('async error handler', function () {
     })
   })
 
+  context('when status is 429', function () {
+    const buffer = Buffer.from('some stuff')
+    const res = { statusCode: 429, requestUrl: new URL('https://example.com/') }
+
+    it('throws InvalidResponse', async function () {
+      try {
+        await checkErrorResponse()({ res, buffer })
+        expect.fail('Expected to throw')
+      } catch (e) {
+        expect(e).to.be.an.instanceof(InvalidResponse)
+        expect(e.message).to.equal(
+          'Invalid Response: Got status code 429 (expected 200)',
+        )
+        expect(e.prettyMessage).to.equal('rate limited by upstream service')
+        expect(e.response).to.equal(res)
+        expect(e.buffer).to.equal(buffer)
+      }
+    })
+
+    it('displays the custom too many requests', async function () {
+      const notFoundMessage = "terribly sorry but that's one too many requests"
+      try {
+        await checkErrorResponse({ 429: notFoundMessage })({ res, buffer })
+        expect.fail('Expected to throw')
+      } catch (e) {
+        expect(e).to.be.an.instanceof(InvalidResponse)
+        expect(e.message).to.equal(
+          'Invalid Response: Got status code 429 (expected 200)',
+        )
+        expect(e.prettyMessage).to.equal(
+          "terribly sorry but that's one too many requests",
+        )
+      }
+    })
+  })
+
   context('when status is 4xx', function () {
     it('throws InvalidResponse', async function () {
       const res = { statusCode: 499 }
@@ -56,7 +90,7 @@ describe('async error handler', function () {
       } catch (e) {
         expect(e).to.be.an.instanceof(InvalidResponse)
         expect(e.message).to.equal(
-          'Invalid Response: Got status code 499 (expected 200)'
+          'Invalid Response: Got status code 499 (expected 200)',
         )
         expect(e.prettyMessage).to.equal('invalid')
         expect(e.response).to.equal(res)
@@ -72,7 +106,7 @@ describe('async error handler', function () {
       } catch (e) {
         expect(e).to.be.an.instanceof(InvalidResponse)
         expect(e.message).to.equal(
-          'Invalid Response: Got status code 403 (expected 200)'
+          'Invalid Response: Got status code 403 (expected 200)',
         )
         expect(e.prettyMessage).to.equal('access denied')
       }
@@ -88,7 +122,7 @@ describe('async error handler', function () {
       } catch (e) {
         expect(e).to.be.an.instanceof(Inaccessible)
         expect(e.message).to.equal(
-          'Inaccessible: Got status code 503 (expected 200)'
+          'Inaccessible: Got status code 503 (expected 200)',
         )
         expect(e.prettyMessage).to.equal('inaccessible')
         expect(e.response).to.equal(res)
@@ -104,7 +138,7 @@ describe('async error handler', function () {
       } catch (e) {
         expect(e).to.be.an.instanceof(Inaccessible)
         expect(e.message).to.equal(
-          'Inaccessible: Got status code 500 (expected 200)'
+          'Inaccessible: Got status code 500 (expected 200)',
         )
         expect(e.prettyMessage).to.equal('server overloaded')
       }

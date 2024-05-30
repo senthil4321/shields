@@ -1,7 +1,6 @@
-'use strict'
-
-const { isBuildStatus } = require('../build-status')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isBuildStatus } from '../build-status.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 // https://dev.azure.com/totodem/Shields.io is a public Azure DevOps project
 // solely created for Shields.io testing.
@@ -25,7 +24,7 @@ t.create('stage badge')
 
 t.create('job badge')
   .get(
-    '/totodem/Shields.io/5.json?stage=Successful%20Stage&job=Successful%20Job'
+    '/totodem/Shields.io/5.json?stage=Successful%20Stage&job=Successful%20Job',
   )
   .expectBadge({
     label: 'build',

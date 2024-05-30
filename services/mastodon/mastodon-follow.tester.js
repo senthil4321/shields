@@ -1,7 +1,6 @@
-'use strict'
-
-const { isMetric } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isMetric } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('Followers - default domain')
   .get('/26471.json')
@@ -9,7 +8,7 @@ t.create('Followers - default domain')
     label: 'follow @wilkie',
     message: isMetric,
     link: [
-      'https://mastodon.social/users/wilkie/remote_follow',
+      'https://mastodon.social/users/wilkie',
       'https://mastodon.social/users/wilkie/followers',
     ],
   })
@@ -34,7 +33,7 @@ t.create('Followers - alternate domain')
     label: 'follow @PhotonQyv',
     message: isMetric,
     link: [
-      'https://mastodon.xyz/users/PhotonQyv/remote_follow',
+      'https://mastodon.xyz/users/PhotonQyv',
       'https://mastodon.xyz/users/PhotonQyv/followers',
     ],
   })

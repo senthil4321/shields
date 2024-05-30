@@ -1,84 +1,114 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const prettyBytes = require('pretty-bytes')
-const { nonNegativeInteger } = require('../validators')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import prettyBytes from 'pretty-bytes'
+import { nonNegativeInteger } from '../validators.js'
+import { BaseJsonService, pathParams } from '../index.js'
 
 const schema = Joi.object({
   size: nonNegativeInteger,
   gzip: nonNegativeInteger,
 }).required()
 
-const keywords = ['node', 'bundlephobia']
+const description =
+  '[Bundlephobia](https://bundlephobia.com) lets you understand the size of a javascript package from NPM before it becomes a part of your bundle.'
 
-module.exports = class Bundlephobia extends BaseJsonService {
-  static get category() {
-    return 'size'
+export default class Bundlephobia extends BaseJsonService {
+  static category = 'size'
+
+  static route = {
+    base: 'bundlephobia',
+    pattern: ':format(min|minzip)/:scope(@[^/]+)?/:packageName/:version?',
   }
 
-  static get route() {
-    return {
-      base: 'bundlephobia',
-      pattern: ':format(min|minzip)/:scope(@[^/]+)?/:packageName/:version?',
-    }
+  static openApi = {
+    '/bundlephobia/{format}/{packageName}': {
+      get: {
+        summary: 'npm bundle size',
+        description,
+        parameters: pathParams(
+          {
+            name: 'format',
+            schema: { type: 'string', enum: this.getEnum('format') },
+            example: 'min',
+          },
+          {
+            name: 'packageName',
+            example: 'react',
+          },
+        ),
+      },
+    },
+    '/bundlephobia/{format}/{scope}/{packageName}': {
+      get: {
+        summary: 'npm bundle size (scoped)',
+        description,
+        parameters: pathParams(
+          {
+            name: 'format',
+            schema: { type: 'string', enum: this.getEnum('format') },
+            example: 'min',
+          },
+          {
+            name: 'scope',
+            example: '@cycle',
+          },
+          {
+            name: 'packageName',
+            example: 'core',
+          },
+        ),
+      },
+    },
+    '/bundlephobia/{format}/{packageName}/{version}': {
+      get: {
+        summary: 'npm bundle size (version)',
+        description,
+        parameters: pathParams(
+          {
+            name: 'format',
+            schema: { type: 'string', enum: this.getEnum('format') },
+            example: 'min',
+          },
+          {
+            name: 'packageName',
+            example: 'react',
+          },
+          {
+            name: 'version',
+            example: '15.0.0',
+          },
+        ),
+      },
+    },
+    '/bundlephobia/{format}/{scope}/{packageName}/{version}': {
+      get: {
+        summary: 'npm bundle size (scoped version)',
+        description,
+        parameters: pathParams(
+          {
+            name: 'format',
+            schema: { type: 'string', enum: this.getEnum('format') },
+            example: 'min',
+          },
+          {
+            name: 'scope',
+            example: '@cycle',
+          },
+          {
+            name: 'packageName',
+            example: 'core',
+          },
+          {
+            name: 'version',
+            example: '7.0.0',
+          },
+        ),
+      },
+    },
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'npm bundle size',
-        pattern: ':format(min|minzip)/:packageName',
-        namedParams: {
-          format: 'min',
-          packageName: 'react',
-        },
-        staticPreview: this.render({ format: 'min', size: 6652 }),
-        keywords,
-      },
-      {
-        title: 'npm bundle size (scoped)',
-        pattern: ':format(min|minzip)/:scope/:packageName',
-        namedParams: {
-          format: 'min',
-          scope: '@cycle',
-          packageName: 'core',
-        },
-        staticPreview: this.render({ format: 'min', size: 3562 }),
-        keywords,
-      },
-      {
-        title: 'npm bundle size (version)',
-        pattern: ':format(min|minzip)/:packageName/:version',
-        namedParams: {
-          format: 'min',
-          packageName: 'react',
-          version: '15.0.0',
-        },
-        staticPreview: this.render({ format: 'min', size: 20535 }),
-        keywords,
-      },
-      {
-        title: 'npm bundle size (scoped version)',
-        pattern: ':format(min|minzip)/:scope/:packageName/:version',
-        namedParams: {
-          format: 'min',
-          scope: '@cycle',
-          packageName: 'core',
-          version: '7.0.0',
-        },
-        staticPreview: this.render({ format: 'min', size: 3562 }),
-        keywords,
-      },
-    ]
-  }
+  static _cacheLength = 900
 
-  static get defaultBadgeData() {
-    return {
-      label: 'bundlephobia',
-      color: 'informational',
-    }
-  }
+  static defaultBadgeData = { label: 'bundlephobia', color: 'informational' }
 
   static render({ format, size }) {
     const label = format === 'min' ? 'minified size' : 'minzipped size'
@@ -92,12 +122,12 @@ module.exports = class Bundlephobia extends BaseJsonService {
     const packageQuery = `${scope ? `${scope}/` : ''}${packageName}${
       version ? `@${version}` : ''
     }`
-    const options = { qs: { package: packageQuery } }
+    const options = { searchParams: { package: packageQuery } }
     return this._requestJson({
       schema,
       url: 'https://bundlephobia.com/api/size',
       options,
-      errorMessages: {
+      httpErrors: {
         404: 'package or version not found',
       },
     })

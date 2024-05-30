@@ -1,42 +1,27 @@
-'use strict'
+import { renderDownloadsBadge } from '../downloads.js'
+import { pathParams } from '../index.js'
+import { BaseAmoService, description } from './amo-base.js'
 
-const { metric } = require('../text-formatters')
-const { BaseAmoService, keywords } = require('./amo-base')
+export default class AmoUsers extends BaseAmoService {
+  static category = 'downloads'
+  static route = { base: 'amo/users', pattern: ':addonId' }
 
-module.exports = class AmoUsers extends BaseAmoService {
-  static get category() {
-    return 'downloads'
-  }
-
-  static get route() {
-    return {
-      base: 'amo/users',
-      pattern: ':addonId',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Mozilla Add-on',
-        namedParams: { addonId: 'dustman' },
-        staticPreview: this.render({ users: 750 }),
-        keywords,
+  static openApi = {
+    '/amo/users/{addonId}': {
+      get: {
+        summary: 'Mozilla Add-on Users',
+        description,
+        parameters: pathParams({ name: 'addonId', example: 'dustman' }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'users',
-    }
-  }
+  static _cacheLength = 21600
 
-  static render({ users }) {
-    return {
-      message: metric(users),
-      color: 'blue',
-    }
+  static defaultBadgeData = { label: 'users' }
+
+  static render({ users: downloads }) {
+    return renderDownloadsBadge({ downloads, colorOverride: 'blue' })
   }
 
   async handle({ addonId }) {

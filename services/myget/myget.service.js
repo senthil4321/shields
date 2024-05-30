@@ -1,69 +1,81 @@
-'use strict'
+import { pathParams } from '../index.js'
+import { createServiceFamily } from '../nuget/nuget-v3-service-family.js'
 
-const { createServiceFamily } = require('../nuget/nuget-v3-service-family')
-
-const {
-  NugetVersionService: Version,
-  NugetDownloadService: Downloads,
-} = createServiceFamily({
-  defaultLabel: 'myget',
-  serviceBaseUrl: 'myget',
-  apiDomain: 'myget.org',
-})
+const { NugetVersionService: Version, NugetDownloadService: Downloads } =
+  createServiceFamily({
+    defaultLabel: 'myget',
+    serviceBaseUrl: 'myget',
+    apiDomain: 'myget.org',
+  })
 
 class MyGetVersionService extends Version {
-  static get examples() {
-    return [
-      {
-        title: 'MyGet',
-        pattern: 'myget/:feed/v/:packageName',
-        namedParams: { feed: 'mongodb', packageName: 'MongoDB.Driver.Core' },
-        staticPreview: this.render({ version: '2.6.1' }),
+  static openApi = {
+    '/myget/{feed}/{variant}/{packageName}': {
+      get: {
+        summary: 'MyGet Version',
+        parameters: pathParams(
+          { name: 'feed', example: 'mongodb' },
+          {
+            name: 'variant',
+            example: 'v',
+            schema: { type: 'variant', enum: ['v', 'vpre'] },
+            description:
+              'Latest stable version (`v`) or Latest version including prereleases (`vpre`).',
+          },
+          { name: 'packageName', example: 'MongoDB.Driver.Core' },
+        ),
       },
-      {
-        title: 'MyGet (with prereleases)',
-        pattern: 'myget/:feed/vpre/:packageName',
-        namedParams: { feed: 'mongodb', packageName: 'MongoDB.Driver.Core' },
-        staticPreview: this.render({ version: '2.7.0-beta0001' }),
+    },
+    '/{tenant}/{feed}/{variant}/{packageName}': {
+      get: {
+        summary: 'MyGet Version (tenant)',
+        parameters: pathParams(
+          {
+            name: 'tenant',
+            example: 'tizen.myget',
+            description: 'MyGet Tenant in the format `name.myget`',
+          },
+          { name: 'feed', example: 'dotnet' },
+          {
+            name: 'variant',
+            example: 'v',
+            schema: { type: 'variant', enum: ['v', 'vpre'] },
+            description:
+              'Latest stable version (`v`) or Latest version including prereleases (`vpre`).',
+          },
+          { name: 'packageName', example: 'Tizen.NET' },
+        ),
       },
-      {
-        title: 'MyGet tenant',
-        pattern: ':tenant.myget/:feed/v/:packageName',
-        namedParams: {
-          tenant: 'dotnet',
-          feed: 'dotnet-coreclr',
-          packageName: 'Microsoft.DotNet.CoreCLR',
-        },
-        staticPreview: this.render({ version: '1.0.2-prerelease' }),
-      },
-    ]
+    },
   }
 }
 
 class MyGetDownloadService extends Downloads {
-  static get examples() {
-    return [
-      {
-        title: 'MyGet',
-        pattern: 'myget/:feed/dt/:packageName',
-        namedParams: { feed: 'mongodb', packageName: 'MongoDB.Driver.Core' },
-        staticPreview: this.render({ downloads: 419 }),
+  static openApi = {
+    '/myget/{feed}/dt/{packageName}': {
+      get: {
+        summary: 'MyGet Downloads',
+        parameters: pathParams(
+          { name: 'feed', example: 'mongodb' },
+          { name: 'packageName', example: 'MongoDB.Driver.Core' },
+        ),
       },
-      {
-        title: 'MyGet tenant',
-        pattern: ':tenant.myget/:feed/dt/:packageName',
-        namedParams: {
-          tenant: 'dotnet',
-          feed: 'dotnet-coreclr',
-          packageName: 'Microsoft.DotNet.CoreCLR',
-        },
-        staticPreview: this.render({ downloads: 9748 }),
+    },
+    '/{tenant}/{feed}/dt/{packageName}': {
+      get: {
+        summary: 'MyGet Downloads (tenant)',
+        parameters: pathParams(
+          {
+            name: 'tenant',
+            example: 'tizen.myget',
+            description: 'MyGet Tenant in the format `name.myget`',
+          },
+          { name: 'feed', example: 'dotnet' },
+          { name: 'packageName', example: 'Tizen.NET' },
+        ),
       },
-    ]
+    },
   }
 }
 
-module.exports = {
-  MyGetVersionService,
-  MyGetDownloadService,
-}
+export { MyGetVersionService, MyGetDownloadService }

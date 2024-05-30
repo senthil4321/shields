@@ -1,21 +1,19 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { renderLicenseBadge } = require('../licenses')
-const { optionalUrl } = require('../validators')
-const { NotFound } = require('..')
-const {
-  keywords,
+import Joi from 'joi'
+import { renderLicenseBadge } from '../licenses.js'
+import { optionalUrl } from '../validators.js'
+import { NotFound, pathParam, queryParam } from '../index.js'
+import {
   BasePackagistService,
   customServerDocumentationFragment,
-} = require('./packagist-base')
+  description,
+} from './packagist-base.js'
 
-const packageSchema = Joi.object()
-  .pattern(
-    /^/,
+const packageSchema = Joi.array()
+  .items(
     Joi.object({
-      license: Joi.array().required(),
-    }).required()
+      version: Joi.string(),
+      license: Joi.array(),
+    }).required(),
   )
   .required()
 
@@ -27,57 +25,65 @@ const queryParamSchema = Joi.object({
   server: optionalUrl,
 }).required()
 
-module.exports = class PackagistLicense extends BasePackagistService {
-  static get category() {
-    return 'license'
+export default class PackagistLicense extends BasePackagistService {
+  static category = 'license'
+
+  static route = {
+    base: 'packagist/l',
+    pattern: ':user/:repo',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'packagist/l',
-      pattern: ':user/:repo',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Packagist License',
-        namedParams: { user: 'doctrine', repo: 'orm' },
-        staticPreview: renderLicenseBadge({ license: 'MIT' }),
-        keywords,
+  static openApi = {
+    '/packagist/l/{user}/{repo}': {
+      get: {
+        summary: 'Packagist License',
+        description,
+        parameters: [
+          pathParam({
+            name: 'user',
+            example: 'guzzlehttp',
+          }),
+          pathParam({
+            name: 'repo',
+            example: 'guzzle',
+          }),
+          queryParam({
+            name: 'server',
+            description: customServerDocumentationFragment,
+            example: 'https://packagist.org',
+          }),
+        ],
       },
-      {
-        title: 'Packagist License (custom server)',
-        namedParams: { user: 'doctrine', repo: 'orm' },
-        queryParams: { server: 'https://packagist.org' },
-        staticPreview: renderLicenseBadge({ license: 'MIT' }),
-        keywords,
-        documentation: customServerDocumentationFragment,
-      },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'license',
-    }
+  static defaultBadgeData = {
+    label: 'license',
   }
 
   transform({ json, user, repo }) {
     const packageName = this.getPackageName(user, repo)
-    const branch = json.packages[packageName]['dev-master']
-    if (!branch) {
-      throw new NotFound({ prettyMessage: 'default branch not found' })
+
+    const versions = BasePackagistService.expandPackageVersions(
+      json,
+      packageName,
+    )
+
+    const version = this.findLatestRelease(versions)
+    const license = version.license
+    if (!license) {
+      throw new NotFound({ prettyMessage: 'license not found' })
     }
-    const { license } = branch
+
     return { license }
   }
 
   async handle({ user, repo }, { server }) {
     const json = await this.fetch({ user, repo, schema, server })
+
     const { license } = this.transform({ json, user, repo })
+
     return renderLicenseBadge({ license })
   }
 }

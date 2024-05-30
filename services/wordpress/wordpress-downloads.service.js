@@ -1,10 +1,7 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { metric } = require('../text-formatters')
-const { downloadCount } = require('../color-formatters')
-const { NotFound } = require('..')
-const BaseWordpress = require('./wordpress-base')
+import Joi from 'joi'
+import { renderDownloadsBadge } from '../downloads.js'
+import { pathParams } from '../index.js'
+import { description, BaseWordpress } from './wordpress-base.js'
 
 const dateSchema = Joi.object()
   .pattern(Joi.date().iso(), Joi.number().integer())
@@ -24,23 +21,22 @@ const extensionData = {
 const intervalMap = {
   dd: {
     limit: 1,
-    messageSuffix: '/day',
+    interval: 'day',
   },
   dw: {
     limit: 7,
-    messageSuffix: '/week',
+    interval: 'week',
   },
   dm: {
     limit: 30,
-    messageSuffix: '/month',
+    interval: 'month',
   },
   dy: {
     limit: 365,
-    messageSuffix: '/year',
+    interval: 'year',
   },
   dt: {
     limit: null,
-    messageSuffix: '',
   },
 }
 
@@ -48,42 +44,46 @@ function DownloadsForExtensionType(extensionType) {
   const { capt, exampleSlug } = extensionData[extensionType]
 
   return class WordpressDownloads extends BaseWordpress {
-    static get name() {
-      return `Wordpress${capt}Downloads`
+    static name = `Wordpress${capt}Downloads`
+
+    static category = 'downloads'
+
+    static route = {
+      base: `wordpress/${extensionType}`,
+      pattern: ':interval(dd|dw|dm|dy|dt)/:slug',
     }
 
-    static get category() {
-      return 'downloads'
-    }
-
-    static get route() {
-      return {
-        base: `wordpress/${extensionType}`,
-        pattern: ':interval(dd|dw|dm|dy|dt)/:slug',
-      }
-    }
-
-    static get examples() {
-      return [
-        {
-          title: `WordPress ${capt} Downloads`,
-          namedParams: { interval: 'dm', slug: exampleSlug },
-          staticPreview: this.render({ interval: 'dm', downloads: 200000 }),
+    static get openApi() {
+      const key = `/wordpress/${extensionType}/{interval}/{slug}`
+      const route = {}
+      route[key] = {
+        get: {
+          summary: `WordPress ${capt} Downloads`,
+          description,
+          parameters: pathParams(
+            {
+              name: 'interval',
+              example: 'dm',
+              schema: { type: 'string', enum: this.getEnum('interval') },
+              description: 'Daily, Weekly, Monthly, Yearly, or Total downloads',
+            },
+            {
+              name: 'slug',
+              example: exampleSlug,
+            },
+          ),
         },
-      ]
+      }
+      return route
     }
 
-    static get defaultBadgeData() {
-      return { label: 'downloads' }
-    }
+    static defaultBadgeData = { label: 'downloads' }
 
     static render({ interval, downloads }) {
-      const { messageSuffix } = intervalMap[interval]
-
-      return {
-        message: `${metric(downloads)}${messageSuffix}`,
-        color: downloadCount(downloads),
-      }
+      return renderDownloadsBadge({
+        downloads,
+        interval: intervalMap[interval].interval,
+      })
     }
 
     async handle({ interval, slug }) {
@@ -96,28 +96,20 @@ function DownloadsForExtensionType(extensionType) {
         })
         downloads = _downloads
       } else {
-        const ext_type = extensionType === 'plugin' ? 'plugin' : 'themes'
+        const extType = extensionType === 'plugin' ? 'plugin' : 'themes'
         const json = await this._requestJson({
           schema: dateSchema,
-          url: `https://api.wordpress.org/stats/${ext_type}/1.0/downloads.php`,
+          url: `https://api.wordpress.org/stats/${extType}/1.0/downloads.php`,
           options: {
-            qs: {
+            searchParams: {
               slug,
               limit,
             },
           },
         })
-        const size = Object.keys(json).length
         downloads = Object.values(json).reduce(
-          (a, b) => parseInt(a) + parseInt(b)
+          (a, b) => parseInt(a) + parseInt(b),
         )
-        // This check is for non-existent and brand-new plugins both having new stats.
-        // Non-Existent plugins results are the same as a brandspanking new plugin with no downloads.
-        if (downloads <= 0 && size <= 1) {
-          throw new NotFound({
-            prettyMessage: `${extensionType} not found or too new`,
-          })
-        }
       }
 
       return this.constructor.render({ interval, downloads })
@@ -129,48 +121,39 @@ function InstallsForExtensionType(extensionType) {
   const { capt, exampleSlug } = extensionData[extensionType]
 
   return class WordpressInstalls extends BaseWordpress {
-    static get name() {
-      return `Wordpress${capt}Installs`
+    static name = `Wordpress${capt}Installs`
+
+    static category = 'downloads'
+
+    static route = {
+      base: `wordpress/${extensionType}/installs`,
+      pattern: ':slug',
     }
 
-    static get category() {
-      return 'downloads'
-    }
-
-    static get route() {
-      return {
-        base: `wordpress/${extensionType}/installs`,
-        pattern: ':slug',
-      }
-    }
-
-    static get examples() {
-      return [
-        {
-          title: `WordPress ${capt} Active Installs`,
-          namedParams: { slug: exampleSlug },
-          staticPreview: this.render({ installCount: 300000 }),
+    static get openApi() {
+      const key = `/wordpress/${extensionType}/installs/{slug}`
+      const route = {}
+      route[key] = {
+        get: {
+          summary: `WordPress ${capt} Active Installs`,
+          description,
+          parameters: pathParams({
+            name: 'slug',
+            example: exampleSlug,
+          }),
         },
-      ]
-    }
-
-    static get defaultBadgeData() {
-      return { label: 'active installs' }
-    }
-
-    static render({ installCount }) {
-      return {
-        message: metric(installCount),
-        color: downloadCount(installCount),
       }
+      return route
     }
+
+    static defaultBadgeData = { label: 'active installs' }
 
     async handle({ slug }) {
       const { active_installs: installCount } = await this.fetch({
         extensionType,
         slug,
       })
-      return this.constructor.render({ installCount })
+      return renderDownloadsBadge({ downloads: installCount })
     }
   }
 }
@@ -178,4 +161,4 @@ function InstallsForExtensionType(extensionType) {
 const downloadServices = ['plugin', 'theme'].map(DownloadsForExtensionType)
 const installServices = ['plugin', 'theme'].map(InstallsForExtensionType)
 const modules = [...downloadServices, ...installServices]
-module.exports = modules
+export default modules

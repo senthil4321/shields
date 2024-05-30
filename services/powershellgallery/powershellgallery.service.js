@@ -1,10 +1,5 @@
-'use strict'
-
-const {
-  fetch,
-  createServiceFamily,
-} = require('../nuget/nuget-v2-service-family')
-const { BaseXmlService } = require('..')
+import { fetch, createServiceFamily } from '../nuget/nuget-v2-service-family.js'
+import { BaseXmlService, pathParams } from '../index.js'
 
 const WINDOWS_TAG_NAME = 'windows'
 const MACOS_TAG_NAME = 'macos'
@@ -30,33 +25,27 @@ const {
 })
 
 class PowershellGalleryPlatformSupport extends BaseXmlService {
-  static get category() {
-    return 'platform-support'
+  static category = 'platform-support'
+
+  static route = {
+    base: 'powershellgallery/p',
+    pattern: ':packageName',
   }
 
-  static get route() {
-    return {
-      base: 'powershellgallery/p',
-      pattern: ':packageName',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'PowerShell Gallery',
-        namedParams: { packageName: 'DNS.1.1.1.1' },
-        staticPreview: this.render({
-          platforms: ['windows', 'macos', 'linux'],
+  static openApi = {
+    '/powershellgallery/p/{packageName}': {
+      get: {
+        summary: 'PowerShell Gallery Platform Support',
+        parameters: pathParams({
+          name: 'packageName',
+          example: 'PackageManagement',
         }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'platform',
-    }
+  static defaultBadgeData = {
+    label: 'platform',
   }
 
   static render({ platforms }) {
@@ -105,7 +94,7 @@ class PowershellGalleryPlatformSupport extends BaseXmlService {
   }
 }
 
-module.exports = {
+export {
   PowershellGalleryVersion,
   PowershellGalleryVersionRedirector,
   PowershellGalleryDownloads,

@@ -1,11 +1,7 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { renderVersionBadge } = require('../version')
-const { NotFound } = require('..')
-const NpmBase = require('./npm-base')
-
-const keywords = ['node']
+import Joi from 'joi'
+import { renderVersionBadge } from '../version.js'
+import { NotFound, pathParam, queryParam } from '../index.js'
+import NpmBase, { packageNameDescription } from './npm-base.js'
 
 // Joi.string should be a semver.
 const schema = Joi.object()
@@ -13,58 +9,52 @@ const schema = Joi.object()
   .pattern(/./, Joi.string())
   .required()
 
-module.exports = class NpmVersion extends NpmBase {
-  static get category() {
-    return 'version'
+export default class NpmVersion extends NpmBase {
+  static category = 'version'
+
+  static route = this.buildRoute('npm/v', { withTag: true })
+
+  static openApi = {
+    '/npm/v/{packageName}': {
+      get: {
+        summary: 'NPM Version',
+        parameters: [
+          pathParam({
+            name: 'packageName',
+            example: 'npm',
+            description: packageNameDescription,
+          }),
+          queryParam({
+            name: 'registry_uri',
+            example: 'https://registry.npmjs.com',
+          }),
+        ],
+      },
+    },
+    '/npm/v/{packageName}/{tag}': {
+      get: {
+        summary: 'NPM Version (with dist tag)',
+        parameters: [
+          pathParam({
+            name: 'packageName',
+            example: 'npm',
+            description: packageNameDescription,
+          }),
+          pathParam({
+            name: 'tag',
+            example: 'next-8',
+          }),
+          queryParam({
+            name: 'registry_uri',
+            example: 'https://registry.npmjs.com',
+          }),
+        ],
+      },
+    },
   }
 
-  static get route() {
-    return this.buildRoute('npm/v', { withTag: true })
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'npm',
-        pattern: ':packageName',
-        namedParams: { packageName: 'npm' },
-        staticPreview: this.render({ version: '6.3.0' }),
-        keywords,
-      },
-      {
-        title: 'npm (scoped)',
-        pattern: ':scope/:packageName',
-        namedParams: { scope: '@cycle', packageName: 'core' },
-        staticPreview: this.render({ version: '7.0.0' }),
-        keywords,
-      },
-      {
-        title: 'npm (tag)',
-        pattern: ':packageName/:tag',
-        namedParams: { packageName: 'npm', tag: 'next' },
-        staticPreview: this.render({ tag: 'latest', version: '6.3.0' }),
-        keywords,
-      },
-      {
-        title: 'npm (custom registry)',
-        pattern: ':packageName/:tag',
-        namedParams: { packageName: 'npm', tag: 'next' },
-        queryParams: { registry_uri: 'https://registry.npmjs.com' },
-        staticPreview: this.render({ tag: 'latest', version: '7.0.0' }),
-        keywords,
-      },
-      {
-        title: 'npm (scoped with tag)',
-        pattern: ':scope/:packageName/:tag',
-        namedParams: { scope: '@cycle', packageName: 'core', tag: 'canary' },
-        staticPreview: this.render({ tag: 'latest', version: '6.3.0' }),
-        keywords,
-      },
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return { label: 'npm' }
+  static defaultBadgeData = {
+    label: 'npm',
   }
 
   static render({ tag, version }) {
@@ -77,12 +67,8 @@ module.exports = class NpmVersion extends NpmBase {
   }
 
   async handle(namedParams, queryParams) {
-    const {
-      scope,
-      packageName,
-      tag,
-      registryUrl,
-    } = this.constructor.unpackParams(namedParams, queryParams)
+    const { scope, packageName, tag, registryUrl } =
+      this.constructor.unpackParams(namedParams, queryParams)
 
     const slug =
       scope === undefined
@@ -92,7 +78,7 @@ module.exports = class NpmVersion extends NpmBase {
     const packageData = await this._requestJson({
       schema,
       url: `${registryUrl}/-/package/${slug}/dist-tags`,
-      errorMessages: { 404: 'package not found' },
+      httpErrors: { 404: 'package not found' },
     })
 
     if (tag && !(tag in packageData)) {

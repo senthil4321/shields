@@ -1,39 +1,30 @@
-'use strict'
+import { starRating } from '../text-formatters.js'
+import { floorCount as floorCountColor } from '../color-formatters.js'
+import { pathParams } from '../index.js'
+import { BaseAmoService, description } from './amo-base.js'
 
-const { starRating } = require('../text-formatters')
-const { floorCount: floorCountColor } = require('../color-formatters')
-const { BaseAmoService, keywords } = require('./amo-base')
+export default class AmoRating extends BaseAmoService {
+  static category = 'rating'
+  static route = { base: 'amo', pattern: ':format(stars|rating)/:addonId' }
 
-module.exports = class AmoRating extends BaseAmoService {
-  static get category() {
-    return 'rating'
-  }
-
-  static get route() {
-    return {
-      base: 'amo',
-      pattern: ':format(stars|rating)/:addonId',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Mozilla Add-on',
-        pattern: 'rating/:addonId',
-        namedParams: { addonId: 'dustman' },
-        staticPreview: this.render({ format: 'rating', rating: 4 }),
-        keywords,
+  static openApi = {
+    '/amo/rating/{addonId}': {
+      get: {
+        summary: 'Mozilla Add-on Rating',
+        description,
+        parameters: pathParams({ name: 'addonId', example: 'dustman' }),
       },
-      {
-        title: 'Mozilla Add-on',
-        pattern: 'stars/:addonId',
-        namedParams: { addonId: 'dustman' },
-        staticPreview: this.render({ format: 'stars', rating: 4 }),
-        keywords,
+    },
+    '/amo/stars/{addonId}': {
+      get: {
+        summary: 'Mozilla Add-on Stars',
+        description,
+        parameters: pathParams({ name: 'addonId', example: 'dustman' }),
       },
-    ]
+    },
   }
+
+  static _cacheLength = 7200
 
   static render({ format, rating }) {
     rating = Math.round(rating)

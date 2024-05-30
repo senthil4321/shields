@@ -1,23 +1,21 @@
-'use strict'
+import { ServiceTester } from '../tester.js'
+import { isMetric, isMetricOpenIssues } from '../test-validators.js'
 
-const { ServiceTester } = require('../tester')
-const { isMetric, isMetricOpenIssues } = require('../test-validators')
-
-const t = (module.exports = new ServiceTester({
+export const t = new ServiceTester({
   id: 'BitbucketIssues',
   title: 'Bitbucket Issues',
   pathPrefix: '/bitbucket',
-}))
+})
 
 t.create('issues-raw (valid)')
-  .get('/issues-raw/atlassian/python-bitbucket.json')
+  .get('/issues-raw/shields-io/test-repo.json')
   .expectBadge({
     label: 'issues',
     message: isMetric,
   })
 
 t.create('issues-raw (not found)')
-  .get('/issues-raw/atlassian/not-a-repo.json')
+  .get('/issues-raw/shields-io/not-a-repo.json')
   .expectBadge({ label: 'issues', message: 'not found' })
 
 t.create('issues-raw (private repo)')
@@ -25,14 +23,14 @@ t.create('issues-raw (private repo)')
   .expectBadge({ label: 'issues', message: 'private repo' })
 
 t.create('issues (valid)')
-  .get('/issues/atlassian/python-bitbucket.json')
+  .get('/issues/shields-io/test-repo.json')
   .expectBadge({
     label: 'issues',
     message: isMetricOpenIssues,
   })
 
 t.create('issues (not found)')
-  .get('/issues/atlassian/not-a-repo.json')
+  .get('/issues/shields-io/not-a-repo.json')
   .expectBadge({ label: 'issues', message: 'not found' })
 
 t.create('issues (private repo)')

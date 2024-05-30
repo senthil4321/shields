@@ -1,8 +1,7 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const t = (module.exports = require('../tester').createServiceTester())
-const { isSemver } = require('../test-validators')
+import Joi from 'joi'
+import { createServiceTester } from '../tester.js'
+import { isSemver } from '../test-validators.js'
+export const t = await createServiceTester()
 
 const isPsycopg2Version = Joi.string().regex(/^v([0-9][.]?)+$/)
 
@@ -23,7 +22,7 @@ t.create('version (semver)').get('/requests.json').expectBadge({
   message: isSemver,
 })
 
-// ..whereas this project does not folow SemVer
+// ..whereas this project does not follow SemVer
 t.create('version (not semver)').get('/psycopg2.json').expectBadge({
   label: 'pypi',
   message: isPsycopg2Version,
@@ -44,8 +43,8 @@ t.create('no trove classifiers')
           license: 'foo',
           classifiers: [],
         },
-        releases: {},
-      })
+        urls: [],
+      }),
   )
   .expectBadge({
     label: 'pypi',

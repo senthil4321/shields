@@ -1,52 +1,47 @@
-'use strict'
-
-const SonarBase = require('./sonar-base')
-const {
+import { pathParam } from '../index.js'
+import SonarBase from './sonar-base.js'
+import {
   negativeMetricColorScale,
   getLabel,
   documentation,
-  keywords,
   queryParamSchema,
-} = require('./sonar-helpers')
+  openApiQueryParams,
+} from './sonar-helpers.js'
 
-module.exports = class SonarTechDebt extends SonarBase {
-  static get category() {
-    return 'analysis'
+export default class SonarTechDebt extends SonarBase {
+  static category = 'analysis'
+
+  static route = {
+    base: 'sonar',
+    pattern: ':metric(tech_debt|sqale_debt_ratio)/:component/:branch*',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'sonar',
-      pattern: ':metric(tech_debt|sqale_debt_ratio)/:component',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Sonar Tech Debt',
-        namedParams: {
-          component: 'org.ow2.petals:petals-se-ase',
-          metric: 'tech_debt',
-        },
-        queryParams: {
-          server: 'http://sonar.petalslink.com',
-          sonarVersion: '4.2',
-        },
-        staticPreview: this.render({
-          debt: 1,
-          metric: 'tech_debt',
-        }),
-        keywords,
-        documentation,
+  static openApi = {
+    '/sonar/tech_debt/{component}': {
+      get: {
+        summary: 'Sonar Tech Debt',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          ...openApiQueryParams,
+        ],
       },
-    ]
+    },
+    '/sonar/tech_debt/{component}/{branch}': {
+      get: {
+        summary: 'Sonar Tech Debt (branch)',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          pathParam({ name: 'branch', example: 'master' }),
+          ...openApiQueryParams,
+        ],
+      },
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'tech debt' }
-  }
+  static defaultBadgeData = { label: 'tech debt' }
 
   static render({ debt, metric }) {
     return {
@@ -56,11 +51,12 @@ module.exports = class SonarTechDebt extends SonarBase {
     }
   }
 
-  async handle({ component, metric }, { server, sonarVersion }) {
+  async handle({ component, metric, branch }, { server, sonarVersion }) {
     const json = await this.fetch({
       sonarVersion,
       server,
       component,
+      branch,
       // Special condition for backwards compatibility.
       metricName: 'sqale_debt_ratio',
     })

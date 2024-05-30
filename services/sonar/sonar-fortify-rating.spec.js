@@ -1,9 +1,7 @@
-'use strict'
-
-const { expect } = require('chai')
-const nock = require('nock')
-const { cleanUpNockAfterEach, defaultContext } = require('../test-helpers')
-const SonarFortifyRating = require('./sonar-fortify-rating.service')
+import { expect } from 'chai'
+import nock from 'nock'
+import { cleanUpNockAfterEach, defaultContext } from '../test-helpers.js'
+import SonarFortifyRating from './sonar-fortify-rating.service.js'
 
 const token = 'abc123def456'
 const config = {
@@ -41,8 +39,8 @@ describe('SonarFortifyRating', function () {
         defaultContext,
         config,
         { component: 'org.ow2.petals:petals-se-ase' },
-        { server: 'http://sonar.petalslink.com' }
-      )
+        { server: 'http://sonar.petalslink.com' },
+      ),
     ).to.deep.equal({
       color: 'green',
       message: '4/5',

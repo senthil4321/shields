@@ -1,88 +1,46 @@
-'use strict'
+import { redirector, pathParam, queryParam } from '../index.js'
+import { description } from '../maven-metadata/maven-metadata.js'
 
-const Joi = require('@hapi/joi')
-const { renderVersionBadge } = require('../version')
-const { BaseXmlService, NotFound } = require('..')
-
-const schema = Joi.object({
-  metadata: Joi.object({
-    versioning: Joi.object({
-      versions: Joi.object({
-        version: Joi.array().items(Joi.string().required()).single().required(),
-      }).required(),
-    }).required(),
-  }).required(),
-}).required()
-
-module.exports = class MavenCentral extends BaseXmlService {
-  static get category() {
-    return 'version'
-  }
-
-  static get route() {
-    return {
-      base: 'maven-central/v',
-      pattern: ':groupId/:artifactId/:versionPrefix?',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Maven Central',
-        pattern: ':groupId/:artifactId',
-        namedParams: {
-          groupId: 'org.apache.maven',
-          artifactId: 'apache-maven',
-        },
-        staticPreview: {
-          label: 'maven-central',
-          message: 'v3.6.0',
-          color: 'blue',
-        },
+export default redirector({
+  category: 'version',
+  isDeprecated: false,
+  route: {
+    base: 'maven-central/v',
+    pattern: ':groupId/:artifactId/:versionPrefix?',
+  },
+  openApi: {
+    '/maven-central/v/{groupId}/{artifactId}': {
+      get: {
+        summary: 'Maven Central Version',
+        description,
+        parameters: [
+          pathParam({ name: 'groupId', example: 'com.google.guava' }),
+          pathParam({ name: 'artifactId', example: 'guava' }),
+          queryParam({
+            name: 'versionPrefix',
+            example: '29',
+            description: 'Filter only versions with this prefix.',
+          }),
+          queryParam({
+            name: 'versionSuffix',
+            example: '-android',
+            description: 'Filter only versions with this suffix.',
+          }),
+        ],
       },
-      {
-        title: 'Maven Central with version prefix filter',
-        pattern: ':groupId/:artifactId/:versionPrefix',
-        namedParams: {
-          groupId: 'org.apache.maven',
-          artifactId: 'apache-maven',
-          versionPrefix: '2',
-        },
-        staticPreview: {
-          label: 'maven-central',
-          message: 'v2.2.1',
-          color: 'blue',
-        },
-      },
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return { label: 'maven-central' }
-  }
-
-  async fetch({ groupId, artifactId }) {
+    },
+  },
+  transformPath: () => '/maven-metadata/v',
+  transformQueryParams: ({ groupId, artifactId, versionPrefix }) => {
     const group = encodeURIComponent(groupId).replace(/\./g, '/')
     const artifact = encodeURIComponent(artifactId)
-    const url = `https://repo1.maven.org/maven2/${group}/${artifact}/maven-metadata.xml`
-    return this._requestXml({
-      schema,
-      url,
-      parserOptions: { parseNodeValue: false },
-    })
-  }
-
-  async handle({ groupId, artifactId, versionPrefix }) {
-    const data = await this.fetch({ groupId, artifactId })
-    const versions = data.metadata.versioning.versions.version.reverse()
-    let version = versions[0]
-    if (versionPrefix !== undefined) {
-      version = versions.filter(v => v.toString().startsWith(versionPrefix))[0]
-      // if the filter returned no results, throw a NotFound
-      if (version === undefined)
-        throw new NotFound({ prettyMessage: 'version prefix not found' })
+    const metadataUrl = `https://repo1.maven.org/maven2/${group}/${artifact}/maven-metadata.xml`
+    return {
+      metadataUrl,
+      label: 'maven-central',
+      versionPrefix,
     }
-    return renderVersionBadge({ version })
-  }
-}
+  },
+  overrideTransformedQueryParams: true,
+  dateAdded: new Date('2021-06-12'),
+})

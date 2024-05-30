@@ -1,13 +1,12 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { renderBuildStatusBadge } = require('../build-status')
-const JenkinsBase = require('./jenkins-base')
-const {
+import Joi from 'joi'
+import { queryParam } from '../index.js'
+import { renderBuildStatusBadge } from '../build-status.js'
+import JenkinsBase from './jenkins-base.js'
+import {
   buildTreeParamQueryString,
   buildUrl,
   queryParamSchema,
-} = require('./jenkins-common')
+} from './jenkins-common.js'
 
 // https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/BallColor.java#L56
 const colorStatusMap = {
@@ -33,37 +32,31 @@ const schema = Joi.object({
   color: Joi.allow(...Object.keys(colorStatusMap)).required(),
 }).required()
 
-module.exports = class JenkinsBuild extends JenkinsBase {
-  static get category() {
-    return 'build'
+export default class JenkinsBuild extends JenkinsBase {
+  static category = 'build'
+
+  static route = {
+    base: 'jenkins',
+    pattern: 'build',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'jenkins',
-      pattern: 'build',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Jenkins',
-        namedParams: {},
-        queryParams: {
-          jobUrl: 'https://wso2.org/jenkins/view/All%20Builds/job/archetypes',
-        },
-        staticPreview: renderBuildStatusBadge({ status: 'passing' }),
+  static openApi = {
+    '/jenkins/build': {
+      get: {
+        summary: 'Jenkins Build',
+        parameters: [
+          queryParam({
+            name: 'jobUrl',
+            example: 'https://ci.eclipse.org/jgit/job/jgit',
+            required: true,
+          }),
+        ],
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'build',
-    }
-  }
+  static defaultBadgeData = { label: 'build' }
 
   static render({ status }) {
     if (status === 'unstable') {
@@ -80,12 +73,11 @@ module.exports = class JenkinsBuild extends JenkinsBase {
     return { status: colorStatusMap[json.color] }
   }
 
-  async handle(namedParams, { jobUrl, disableStrictSSL }) {
+  async handle(namedParams, { jobUrl }) {
     const json = await this.fetch({
       url: buildUrl({ jobUrl, lastCompletedBuild: false }),
       schema,
-      qs: buildTreeParamQueryString('color'),
-      disableStrictSSL,
+      searchParams: buildTreeParamQueryString('color'),
     })
     const { status } = this.transform({ json })
     return this.constructor.render({ status })

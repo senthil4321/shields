@@ -1,8 +1,6 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { nonNegativeInteger } = require('../validators')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import { nonNegativeInteger } from '../validators.js'
+import { BaseJsonService } from '../index.js'
 
 const condaSchema = Joi.object({
   latest_version: Joi.string().required(),
@@ -11,20 +9,18 @@ const condaSchema = Joi.object({
     .items(
       Joi.object({
         ndownloads: nonNegativeInteger,
-      })
+      }),
     )
     .required(),
 }).required()
 
-module.exports = class BaseCondaService extends BaseJsonService {
-  static get defaultBadgeData() {
-    return { label: 'conda' }
-  }
+export default class BaseCondaService extends BaseJsonService {
+  static defaultBadgeData = { label: 'conda' }
 
-  async fetch({ channel, pkg }) {
+  async fetch({ channel, packageName }) {
     return this._requestJson({
       schema: condaSchema,
-      url: `https://api.anaconda.org/package/${channel}/${pkg}`,
+      url: `https://api.anaconda.org/package/${channel}/${packageName}`,
     })
   }
 }

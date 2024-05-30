@@ -1,43 +1,46 @@
-'use strict'
+import { pathParam } from '../index.js'
+import { coveragePercentage } from '../color-formatters.js'
+import SonarBase from './sonar-base.js'
+import {
+  documentation,
+  queryParamSchema,
+  openApiQueryParams,
+} from './sonar-helpers.js'
 
-const { coveragePercentage } = require('../color-formatters')
-const SonarBase = require('./sonar-base')
-const { documentation, keywords, queryParamSchema } = require('./sonar-helpers')
+export default class SonarCoverage extends SonarBase {
+  static category = 'coverage'
 
-module.exports = class SonarCoverage extends SonarBase {
-  static get category() {
-    return 'coverage'
+  static route = {
+    base: 'sonar/coverage',
+    pattern: ':component/:branch*',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'sonar/coverage',
-      pattern: ':component',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Sonar Coverage',
-        namedParams: {
-          component: 'org.ow2.petals:petals-se-ase',
-        },
-        queryParams: {
-          server: 'http://sonar.petalslink.com',
-          sonarVersion: '4.2',
-        },
-        staticPreview: this.render({ coverage: 63 }),
-        keywords,
-        documentation,
+  static openApi = {
+    '/sonar/coverage/{component}': {
+      get: {
+        summary: 'Sonar Coverage',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          ...openApiQueryParams,
+        ],
       },
-    ]
+    },
+    '/sonar/coverage/{component}/{branch}': {
+      get: {
+        summary: 'Sonar Coverage (branch)',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:letra' }),
+          pathParam({ name: 'branch', example: 'master' }),
+          ...openApiQueryParams,
+        ],
+      },
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'coverage' }
-  }
+  static defaultBadgeData = { label: 'coverage' }
 
   static render({ coverage }) {
     return {
@@ -46,11 +49,12 @@ module.exports = class SonarCoverage extends SonarBase {
     }
   }
 
-  async handle({ component }, { server, sonarVersion }) {
+  async handle({ component, branch }, { server, sonarVersion }) {
     const json = await this.fetch({
       sonarVersion,
       server,
       component,
+      branch,
       metricName: 'coverage',
     })
     const { coverage } = this.transform({

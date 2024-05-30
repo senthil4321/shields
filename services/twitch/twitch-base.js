@@ -1,7 +1,5 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import { BaseJsonService } from '../index.js'
 
 const tokenSchema = Joi.object({
   access_token: Joi.string().required(),
@@ -16,14 +14,12 @@ function sleep(ms) {
 }
 
 // Abstract class for Twitch badges
-module.exports = class TwitchBase extends BaseJsonService {
-  static get auth() {
-    return {
-      userKey: 'twitch_client_id',
-      passKey: 'twitch_client_secret',
-      authorizedOrigins: ['https://id.twitch.tv'],
-      isRequired: true,
-    }
+export default class TwitchBase extends BaseJsonService {
+  static auth = {
+    userKey: 'twitch_client_id',
+    passKey: 'twitch_client_secret',
+    authorizedOrigins: ['https://id.twitch.tv'],
+    isRequired: true,
   }
 
   constructor(...args) {
@@ -43,26 +39,26 @@ module.exports = class TwitchBase extends BaseJsonService {
         { userKey: 'client_id', passKey: 'client_secret' },
         {
           schema: tokenSchema,
-          url: `https://id.twitch.tv/oauth2/token`,
+          url: 'https://id.twitch.tv/oauth2/token',
           options: {
             method: 'POST',
-            qs: {
+            searchParams: {
               grant_type: 'client_credentials',
             },
           },
-          errorMessages: {
+          httpErrors: {
             401: 'invalid token',
             404: 'node not found',
           },
-        }
-      )
+        },
+      ),
     )
 
     // replace the token when we are 80% near the expire time
     // 2147483647 is the max 32-bit value that is accepted by setTimeout(), it's about 24.9 days
     const replaceTokenMs = Math.min(
       tokenRes.expires_in * 1000 * 0.8,
-      2147483647
+      2147483647,
     )
     const timeout = setTimeout(() => {
       TwitchBase.__twitchToken = this._getNewToken()
@@ -81,7 +77,7 @@ module.exports = class TwitchBase extends BaseJsonService {
       options: {
         ...request.options,
         headers: {
-          'Client-ID': this.authHelper.user,
+          'Client-ID': this.authHelper._user,
           Authorization: `Bearer ${await this._twitchToken()}`,
           ...(request.options && request.options.headers),
         },

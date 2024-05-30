@@ -1,8 +1,6 @@
-'use strict'
-
-const escapeStringRegexp = require('escape-string-regexp')
-const Joi = require('@hapi/joi')
-const { pathToRegexp } = require('path-to-regexp')
+import escapeStringRegexp from 'escape-string-regexp'
+import Joi from 'joi'
+import { pathToRegexp } from 'path-to-regexp'
 
 function makeFullUrl(base, partialUrl) {
   return `/${[base, partialUrl].filter(Boolean).join('/')}`
@@ -54,7 +52,7 @@ function namedParamsForMatch(captureNames = [], match, ServiceClass) {
   if (captureNames.length !== captures.length) {
     throw new Error(
       `Service ${ServiceClass.name} declares incorrect number of named params ` +
-        `(expected ${captures.length}, got ${captureNames.length})`
+        `(expected ${captures.length}, got ${captureNames.length})`,
     )
   }
 
@@ -74,7 +72,7 @@ function getQueryParamNames({ queryParamSchema }) {
   }
 }
 
-module.exports = {
+export {
   makeFullUrl,
   isValidRoute,
   assertValidRoute,

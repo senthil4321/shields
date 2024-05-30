@@ -1,10 +1,8 @@
-'use strict'
-
-const { expect } = require('chai')
-const nock = require('nock')
-const { cleanUpNockAfterEach, defaultContext } = require('../test-helpers')
-const { InvalidResponse, NotFound } = require('..')
-const Nexus = require('./nexus.service')
+import { expect } from 'chai'
+import nock from 'nock'
+import { cleanUpNockAfterEach, defaultContext } from '../test-helpers.js'
+import { InvalidResponse, NotFound } from '../index.js'
+import Nexus from './nexus.service.js'
 
 describe('Nexus', function () {
   context('transform2()', function () {
@@ -94,7 +92,7 @@ describe('Nexus', function () {
         } catch (e) {
           expect(e).to.be.an.instanceof(NotFound)
           expect(e.prettyMessage).to.equal(
-            'artifact or snapshot version not found'
+            'artifact or snapshot version not found',
           )
         }
       })
@@ -153,8 +151,8 @@ describe('Nexus', function () {
           },
           {
             server: 'https://repository.jboss.org/nexus',
-          }
-        )
+          },
+        ),
       ).to.deep.equal({
         message: 'v2.3.4',
         color: 'blue',

@@ -1,43 +1,45 @@
-'use strict'
+import { pathParam } from '../index.js'
+import SonarBase from './sonar-base.js'
+import {
+  documentation,
+  queryParamSchema,
+  openApiQueryParams,
+} from './sonar-helpers.js'
 
-const SonarBase = require('./sonar-base')
-const { documentation, keywords, queryParamSchema } = require('./sonar-helpers')
+export default class SonarQualityGate extends SonarBase {
+  static category = 'analysis'
 
-module.exports = class SonarQualityGate extends SonarBase {
-  static get category() {
-    return 'analysis'
+  static route = {
+    base: 'sonar',
+    pattern: ':metric(quality_gate|alert_status)/:component/:branch*',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'sonar',
-      pattern: ':metric(quality_gate|alert_status)/:component',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Sonar Quality Gate',
-        namedParams: {
-          component: 'swellaby:azdo-shellcheck',
-          metric: 'quality_gate',
-        },
-        queryParams: {
-          server: 'https://sonarcloud.io',
-          sonarVersion: '4.2',
-        },
-        staticPreview: this.render({ qualityState: 'OK' }),
-        keywords,
-        documentation,
+  static openApi = {
+    '/sonar/quality_gate/{component}': {
+      get: {
+        summary: 'Sonar Quality Gate',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:azdo-shellcheck' }),
+          ...openApiQueryParams,
+        ],
       },
-    ]
+    },
+    '/sonar/quality_gate/{component}/{branch}': {
+      get: {
+        summary: 'Sonar Quality Gate (branch)',
+        description: documentation,
+        parameters: [
+          pathParam({ name: 'component', example: 'swellaby:azdo-shellcheck' }),
+          pathParam({ name: 'branch', example: 'master' }),
+          ...openApiQueryParams,
+        ],
+      },
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'quality gate' }
-  }
+  static defaultBadgeData = { label: 'quality gate' }
 
   static render({ qualityState }) {
     if (qualityState === 'OK') {
@@ -52,11 +54,12 @@ module.exports = class SonarQualityGate extends SonarBase {
     }
   }
 
-  async handle({ component }, { server, sonarVersion }) {
+  async handle({ component, branch }, { server, sonarVersion }) {
     const json = await this.fetch({
       sonarVersion,
       server,
       component,
+      branch,
       metricName: 'alert_status',
     })
     const { alert_status: qualityState } = this.transform({

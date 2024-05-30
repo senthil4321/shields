@@ -1,32 +1,26 @@
-'use strict'
+import { BaseService, pathParams } from '../index.js'
 
-const { BaseService } = require('..')
+export default class HackageDeps extends BaseService {
+  static category = 'dependencies'
 
-module.exports = class HackageDeps extends BaseService {
-  static get category() {
-    return 'dependencies'
+  static route = {
+    base: 'hackage-deps/v',
+    pattern: ':packageName',
   }
 
-  static get route() {
-    return {
-      base: 'hackage-deps/v',
-      pattern: ':packageName',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Hackage-Deps',
-        namedParams: { packageName: 'lens' },
-        staticPreview: this.render({ isOutdated: false }),
+  static openApi = {
+    '/hackage-deps/v/{packageName}': {
+      get: {
+        summary: 'Hackage Dependencies',
+        parameters: pathParams({
+          name: 'packageName',
+          example: 'lens',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'dependencies' }
-  }
+  static defaultBadgeData = { label: 'dependencies' }
 
   static render({ isOutdated }) {
     if (isOutdated) {

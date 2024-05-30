@@ -1,12 +1,6 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const t = (module.exports = require('../tester').createServiceTester())
-
-const isOrdinalNumber = Joi.string().regex(/^[1-9][0-9]+(ᵗʰ|ˢᵗ|ⁿᵈ|ʳᵈ)$/)
-const isOrdinalNumberDaily = Joi.string().regex(
-  /^[1-9][0-9]*(ᵗʰ|ˢᵗ|ⁿᵈ|ʳᵈ) daily$/
-)
+import { createServiceTester } from '../tester.js'
+import { isOrdinalNumber, isOrdinalNumberDaily } from '../test-validators.js'
+export const t = await createServiceTester()
 
 t.create('total rank (valid)').get('/rt/rspec-puppet-facts.json').expectBadge({
   label: 'rank',
@@ -32,6 +26,6 @@ t.create('rank is null')
           date: '2019-01-06',
           daily_ranking: null,
         },
-      ])
+      ]),
   )
   .expectBadge({ label: 'rank', message: 'invalid rank' })

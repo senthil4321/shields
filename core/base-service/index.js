@@ -1,30 +1,30 @@
-'use strict'
-
-const BaseService = require('./base')
-const BaseJsonService = require('./base-json')
-const BaseGraphqlService = require('./base-graphql')
-const NonMemoryCachingBaseService = require('./base-non-memory-caching')
-const BaseStaticService = require('./base-static')
-const BaseSvgScrapingService = require('./base-svg-scraping')
-const BaseXmlService = require('./base-xml')
-const BaseYamlService = require('./base-yaml')
-const deprecatedService = require('./deprecated-service')
-const redirector = require('./redirector')
-const {
+import BaseService from './base.js'
+import BaseJsonService from './base-json.js'
+import BaseGraphqlService from './base-graphql.js'
+import BaseStaticService from './base-static.js'
+import BaseSvgScrapingService from './base-svg-scraping.js'
+import BaseTomlService from './base-toml.js'
+import BaseXmlService from './base-xml.js'
+import BaseYamlService from './base-yaml.js'
+import deprecatedService from './deprecated-service.js'
+import redirector from './redirector.js'
+import {
   NotFound,
   InvalidResponse,
   Inaccessible,
   InvalidParameter,
   Deprecated,
-} = require('./errors')
+  ImproperlyConfigured,
+} from './errors.js'
+import { pathParam, pathParams, queryParam, queryParams } from './openapi.js'
 
-module.exports = {
+export {
   BaseService,
   BaseJsonService,
   BaseGraphqlService,
-  NonMemoryCachingBaseService,
   BaseStaticService,
   BaseSvgScrapingService,
+  BaseTomlService,
   BaseXmlService,
   BaseYamlService,
   deprecatedService,
@@ -33,5 +33,10 @@ module.exports = {
   InvalidResponse,
   Inaccessible,
   InvalidParameter,
+  ImproperlyConfigured,
   Deprecated,
+  pathParam,
+  pathParams,
+  queryParam,
+  queryParams,
 }

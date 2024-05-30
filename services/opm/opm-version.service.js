@@ -1,56 +1,53 @@
-'use strict'
+import { renderVersionBadge } from '../version.js'
+import { BaseService, NotFound, InvalidResponse, pathParams } from '../index.js'
 
-const { renderVersionBadge } = require('../version')
-const { BaseService, NotFound, InvalidResponse } = require('..')
+export default class OpmVersion extends BaseService {
+  static category = 'version'
 
-module.exports = class OpmVersion extends BaseService {
-  static get category() {
-    return 'version'
+  static route = {
+    base: 'opm/v',
+    pattern: ':user/:moduleName',
   }
 
-  static get route() {
-    return {
-      base: 'opm/v',
-      pattern: ':user/:moduleName',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'OPM',
-        namedParams: {
-          user: 'openresty',
-          moduleName: 'lua-resty-lrucache',
-        },
-        staticPreview: renderVersionBadge({ version: 'v0.08' }),
+  static openApi = {
+    '/opm/v/{user}/{moduleName}': {
+      get: {
+        summary: 'OPM Version',
+        parameters: pathParams(
+          {
+            name: 'user',
+            example: 'openresty',
+          },
+          {
+            name: 'moduleName',
+            example: 'lua-resty-lrucache',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'opm',
-    }
+  static defaultBadgeData = {
+    label: 'opm',
   }
 
   async fetch({ user, moduleName }) {
     const { res } = await this._request({
-      url: `https://opm.openresty.org/api/pkg/fetch`,
+      url: 'https://opm.openresty.org/api/pkg/fetch',
       options: {
         method: 'HEAD',
-        qs: {
+        searchParams: {
           account: user,
           name: moduleName,
         },
       },
-      errorMessages: {
+      httpErrors: {
         404: 'module not found',
       },
     })
 
-    // XXX: intercept 302 redirects and set followRedirect to false
-    const location = res.request.path
+    // TODO: set followRedirect to false and intercept 302 redirects
+    const location = res.redirectUrls[0].toString()
     if (!location) {
       throw new NotFound({ prettyMessage: 'module not found' })
     }

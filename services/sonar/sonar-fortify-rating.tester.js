@@ -1,6 +1,5 @@
-'use strict'
-
-const t = (module.exports = require('../tester').createServiceTester())
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 // The service tests targeting the legacy SonarQube API are mocked
 // because of the lack of publicly accessible, self-hosted, legacy SonarQube instances
@@ -30,7 +29,7 @@ t.create('Fortify Security Rating')
             },
           ],
         },
-      })
+      }),
   )
   .expectBadge({
     label: 'fortify-security-rating',
@@ -39,7 +38,7 @@ t.create('Fortify Security Rating')
 
 t.create('Fortify Security Rating (legacy API supported)')
   .get(
-    '/org.ow2.petals%3Apetals-se-ase.json?server=http://sonar.petalslink.com&sonarVersion=4.2'
+    '/org.ow2.petals%3Apetals-se-ase.json?server=http://sonar.petalslink.com&sonarVersion=4.2',
   )
   .intercept(nock =>
     nock('http://sonar.petalslink.com/api')
@@ -59,7 +58,7 @@ t.create('Fortify Security Rating (legacy API supported)')
             },
           ],
         },
-      ])
+      ]),
   )
   .expectBadge({
     label: 'fortify-security-rating',
@@ -68,7 +67,7 @@ t.create('Fortify Security Rating (legacy API supported)')
 
 t.create('Fortify Security Rating (legacy API not supported)')
   .get(
-    '/swellaby:azdo-shellcheck.json?server=https://sonarcloud.io&sonarVersion=4.2'
+    '/swellaby:azdo-shellcheck.json?server=https://sonarcloud.io&sonarVersion=4.2',
   )
   .expectBadge({
     label: 'fortify-security-rating',
@@ -84,7 +83,7 @@ t.create('Fortify Security Rating (nonexistent component)')
 
 t.create('Fortify Security Rating (legacy API metric not found)')
   .get(
-    '/org.ow2.petals%3Apetals-se-ase.json?server=http://sonar.petalslink.com&sonarVersion=4.2'
+    '/org.ow2.petals%3Apetals-se-ase.json?server=http://sonar.petalslink.com&sonarVersion=4.2',
   )
   .intercept(nock =>
     nock('http://sonar.petalslink.com/api')
@@ -99,7 +98,7 @@ t.create('Fortify Security Rating (legacy API metric not found)')
         {
           msr: [],
         },
-      ])
+      ]),
   )
   .expectBadge({
     label: 'fortify-security-rating',

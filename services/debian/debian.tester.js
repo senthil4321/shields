@@ -1,9 +1,6 @@
-'use strict'
-
-const {
-  isVPlusDottedVersionNClausesWithOptionalSuffixAndEpoch,
-} = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isVPlusDottedVersionNClausesWithOptionalSuffixAndEpoch } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('Debian package (default distribution, valid)')
   .get('/apt.json')
@@ -28,7 +25,7 @@ t.create('Debian package (valid)')
         {
           apt: { unstable: { '1.8.0': { source: 'apt', component: 'main' } } },
         },
-      ])
+      ]),
   )
   .expectBadge({ label: 'debian', message: 'v1.8.0' })
 
@@ -44,7 +41,7 @@ t.create('Debian package (invalid, more than one result)')
         {
           apt: { unstable: { '1.8.1': { source: 'apt', component: 'main' } } },
         },
-      ])
+      ]),
   )
   .expectBadge({ label: 'debian', message: 'invalid response data' })
 
@@ -59,7 +56,7 @@ t.create('Debian package (invalid, requested package missing from response)')
             unstable: { '1.8.0': { source: 'apt', component: 'main' } },
           },
         },
-      ])
+      ]),
   )
   .expectBadge({ label: 'debian', message: 'invalid response data' })
 

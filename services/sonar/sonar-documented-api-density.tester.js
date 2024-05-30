@@ -1,6 +1,5 @@
-'use strict'
-
-const t = (module.exports = require('../tester').createServiceTester())
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 // The service tests targeting the legacy SonarQube API are mocked
 // because of the lack of publicly accessible, self-hosted, legacy SonarQube instances
@@ -13,9 +12,7 @@ const t = (module.exports = require('../tester').createServiceTester())
 // https://docs.sonarqube.org/7.0/MetricDefinitions.html
 // https://sonarcloud.io/api/measures/component?componentKey=org.sonarsource.sonarqube:sonarqube&metricKeys=public_documented_api_density
 t.create('Documented API Density (not found)')
-  .get(
-    '/org.sonarsource.sonarqube%3Asonarqube.json?server=https://sonarcloud.io'
-  )
+  .get('/brave_brave-core.json?server=https://sonarcloud.io')
   .expectBadge({
     label: 'public documented api density',
     message: 'metric not found',
@@ -23,7 +20,7 @@ t.create('Documented API Density (not found)')
 
 t.create('Documented API Density')
   .get(
-    '/org.ow2.petals%3Apetals-se-ase.json?server=http://sonar.somewhatold.com&sonarVersion=6.1'
+    '/org.ow2.petals%3Apetals-se-ase.json?server=http://sonar.somewhatold.com&sonarVersion=6.1',
   )
   .intercept(nock =>
     nock('http://sonar.somewhatold.com/api')
@@ -41,7 +38,7 @@ t.create('Documented API Density')
             },
           ],
         },
-      })
+      }),
   )
   .expectBadge({
     label: 'public documented api density',
@@ -50,7 +47,7 @@ t.create('Documented API Density')
 
 t.create('Documented API Density (legacy API supported)')
   .get(
-    '/org.ow2.petals%3Apetals-se-ase.json?server=http://sonar.petalslink.com&sonarVersion=4.2'
+    '/org.ow2.petals%3Apetals-se-ase.json?server=http://sonar.petalslink.com&sonarVersion=4.2',
   )
   .intercept(nock =>
     nock('http://sonar.petalslink.com/api')
@@ -70,7 +67,7 @@ t.create('Documented API Density (legacy API supported)')
             },
           ],
         },
-      ])
+      ]),
   )
   .expectBadge({
     label: 'public documented api density',

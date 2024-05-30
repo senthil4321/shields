@@ -4,7 +4,7 @@
 
 The Shields codebase is divided into several parts:
 
-1.  The frontend (about 7% of the code)
+1.  The frontend
     1. [`frontend`][frontend]
 2.  The badge renderer (which is available as an npm package)
     1.  [`badge-maker`][badge-maker]
@@ -20,8 +20,6 @@ The Shields codebase is divided into several parts:
     1.  `*.js` in the root of [`services`][services]
 7.  The services themselves (about 80% of the code)
     1.  `*.js` in the folders of [`services`][services]
-8.  The badge suggestion endpoint (Note: it's tested as if it’s a service.)
-    1.  [`lib/suggest.js`][suggest]
 
 [frontend]: https://github.com/badges/shields/tree/master/frontend
 [badge-maker]: https://github.com/badges/shields/tree/master/badge-maker
@@ -29,36 +27,35 @@ The Shields codebase is divided into several parts:
 [server]: https://github.com/badges/shields/tree/master/core/server
 [token-pooling]: https://github.com/badges/shields/tree/master/core/token-pooling
 [services]: https://github.com/badges/shields/tree/master/services
-[suggest]: https://github.com/badges/shields/tree/master/lib/suggest.js
 
 The tests are also divided into several parts:
 
-1.  Unit and functional tests of the frontend
-    1.  `frontend/**/*.spec.js`
-2.  Unit and functional tests of the badge renderer
+1.  Unit and functional tests of the badge renderer
     1.  `badge-maker/**/*.spec.js`
-3.  Unit and functional tests of the core code
+2.  Unit and functional tests of the core code
     1.  `core/**/*.spec.js`
-4.  Unit and functional tests of the service helper functions
+3.  Unit and functional tests of the service helper functions
     1.  `services/*.spec.js`
-5.  Unit and functional tests of the service code (we have only a few of these)
+4.  Unit and functional tests of the service code (we have only a few of these)
     1.  `services/*/**/*.spec.js`
+5.  End-to-end tests for the frontend
+    1.  `cypress/e2e/*.cy.js`
 6.  The service tester and service test runner
     1.  [`core/service-test-runner`][service-test-runner]
 7.  [The service tests themselves][service tests] live integration tests of the
     services, and some mocked tests
     1.  `*.tester.js` in subfolders of [`services`][services]
-8.  Integration tests of Redis-backed persistence code
-    1.  [`core/token-pooling/redis-token-persistence.integration.js`][redis-token-persistence.integration]
+8.  Integration tests of PostgreSQL-backed persistence code
+    1.  [`core/token-pooling/sql-token-persistence.integration.js`][sql-token-persistence.integration]
 9.  Integration tests of the GitHub authorization code
     1.  [`services/github/github-api-provider.integration.js`][github-api-provider.integration]
 
 [service-test-runner]: https://github.com/badges/shields/tree/master/core/service-test-runner
 [service tests]: https://github.com/badges/shields/blob/master/doc/service-tests.md
-[redis-token-persistence.integration]: https://github.com/badges/shields/blob/master/core/token-pooling/redis-token-persistence.integration.js
+[sql-token-persistence.integration]: https://github.com/badges/shields/blob/master/core/token-pooling/sql-token-persistence.integration.js
 [github-api-provider.integration]: https://github.com/badges/shields/blob/master/services/github/github-api-provider.integration.js
 
-Our goal is for the core code is to reach 100% coverage of the code in the
+Our goal is to reach 100% coverage of the code in the
 frontend, core, and service helper functions when the unit and functional
 tests are run.
 
@@ -95,8 +92,8 @@ test this kind of logic through unit tests (e.g. of `render()` and
     callback with the four parameters `( queryParams, match, end, ask )` which
     is created in a legacy helper function in
     [`legacy-request-handler.js`][legacy-request-handler]. This callback
-    delegates to a callback in `BaseService.register` with four different
-    parameters `( queryParams, match, sendBadge, request )`, which
+    delegates to a callback in `BaseService.register` with three different
+    parameters `( queryParams, match, sendBadge )`, which
     then runs `BaseService.invoke`. `BaseService.invoke` instantiates the
     service and runs `BaseService#handle`.
 
@@ -125,17 +122,16 @@ test this kind of logic through unit tests (e.g. of `render()` and
     registered.)
 2.  Scoutcamp invokes a callback with the four parameters:
     `( queryParams, match, end, ask )`. This callback is defined in
-    [`legacy-request-handler`][legacy-request-handler]. If the badge result
-    is found in a relatively small in-memory cache, the response is sent
-    immediately. Otherwise a timeout is set to handle unresponsive service
-    code and the next callback is invoked: the legacy handler function.
+    [`legacy-request-handler`][legacy-request-handler]. A timeout is set to
+    handle unresponsive service code and the next callback is invoked: the
+    legacy handler function.
 3.  The legacy handler function receives
-    `( queryParams, match, sendBadge, request )`. Its job is to extract data
-    from the regex `match` and `queryParams`, invoke `request` to fetch
-    whatever data it needs, and then invoke `sendBadge` with the result.
+    `( queryParams, match, sendBadge )`. Its job is to extract data
+    from the regex `match` and `queryParams`, and then invoke `sendBadge`
+    with the result.
 4.  The implementation of this function is in `BaseService.register`. It
     works by running `BaseService.invoke`, which instantiates the service,
-    injects more dependencies, and invokes `BaseService#handle` which is
+    injects more dependencies, and invokes `BaseService.handle` which is
     implemented by the service subclass.
 5.  The job of `handle()`, which should be implemented by each service
     subclass, is to return an object which partially describes a badge or
@@ -162,8 +158,8 @@ test this kind of logic through unit tests (e.g. of `render()` and
     service’s defaults to produce an object that fully describes the badge to
     be rendered.
 9.  `sendBadge` is invoked with that object. It does some housekeeping on the
-    timeout and caches the result. Then it renders the badge to svg or raster
-    and pushes out the result over the HTTPS connection.
+    timeout. Then it renders the badge to svg or raster and pushes out the
+    result over the HTTPS connection.
 
 [error reporting]: https://github.com/badges/shields/blob/master/doc/production-hosting.md#error-reporting
 [coalescebadge]: https://github.com/badges/shields/blob/master/core/base-service/coalesce-badge.js

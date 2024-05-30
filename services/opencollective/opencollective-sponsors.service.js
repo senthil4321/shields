@@ -1,34 +1,33 @@
-'use strict'
+import { pathParams } from '../index.js'
+import OpencollectiveBase from './opencollective-base.js'
 
-const OpencollectiveBase = require('./opencollective-base')
+export default class OpencollectiveSponsors extends OpencollectiveBase {
+  static route = this.buildRoute('sponsors')
 
-module.exports = class OpencollectiveSponsors extends OpencollectiveBase {
-  static get route() {
-    return this.buildRoute('sponsors')
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Open Collective sponsors',
-        namedParams: { collective: 'shields' },
-        staticPreview: this.render(10),
-        keywords: ['opencollective'],
+  static openApi = {
+    '/opencollective/sponsors/{collective}': {
+      get: {
+        summary: 'Open Collective sponsors',
+        parameters: pathParams({
+          name: 'collective',
+          example: 'shields',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'sponsors',
-    }
+  static _cacheLength = 3600
+
+  static defaultBadgeData = {
+    label: 'sponsors',
   }
 
   async handle({ collective }) {
-    const { backersCount } = await this.fetchCollectiveBackersCount(
+    const data = await this.fetchCollectiveInfo({
       collective,
-      { userType: 'organizations' }
-    )
+      accountType: ['ORGANIZATION'],
+    })
+    const backersCount = this.getCount(data)
     return this.constructor.render(backersCount)
   }
 }

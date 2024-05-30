@@ -1,7 +1,6 @@
-'use strict'
-
-const { isMetric, isMetricOverTimePeriod } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isMetric, isMetricOverTimePeriod } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('daily downloads (valid, no package version specified)')
   .get('/dd/doctrine/orm.json')
@@ -18,7 +17,7 @@ t.create('daily downloads (valid, no package version specified, custom server)')
   })
 
 t.create(
-  'daily downloads (invalid, no package version specified, invalid custom server)'
+  'daily downloads (invalid, no package version specified, invalid custom server)',
 )
   .get('/dd/doctrine/orm.json?server=https%3A%2F%2Fpackagist.com')
   .expectBadge({
@@ -34,7 +33,7 @@ t.create('monthly downloads (valid, no package version specified)')
   })
 
 t.create(
-  'monthly downloads (valid, no package version specified, custom server)'
+  'monthly downloads (valid, no package version specified, custom server)',
 )
   .get('/dm/doctrine/orm.json?server=https%3A%2F%2Fpackagist.org')
   .expectBadge({
@@ -43,7 +42,7 @@ t.create(
   })
 
 t.create(
-  'monthly downloads (valid, no package version specified, invalid custom server)'
+  'monthly downloads (valid, no package version specified, invalid custom server)',
 )
   .get('/dm/doctrine/orm.json?server=https%3A%2F%2Fpackagist.com')
   .expectBadge({
@@ -66,7 +65,7 @@ t.create('total downloads (valid, no package version specified, custom server)')
   })
 
 t.create(
-  'total downloads (valid, no package version specified, invalid custom server)'
+  'total downloads (valid, no package version specified, invalid custom server)',
 )
   .get('/dt/doctrine/orm.json?server=https%3A%2F%2Fpackagist.com')
   .expectBadge({
@@ -88,7 +87,7 @@ t.create('monthly downloads (invalid, package version in request)')
   .expectBadge({ label: '404', message: 'badge not found' })
 
 t.create(
-  'monthly downloads (invalid, package version in request, custom server)'
+  'monthly downloads (invalid, package version in request, custom server)',
 )
   .get('/dm/symfony/symfony/v2.8.0.json?server=https%3A%2F%2Fpackagist.org')
   .expectBadge({ label: '404', message: 'badge not found' })

@@ -1,9 +1,7 @@
-'use strict'
-
-const { expect } = require('chai')
-const { test, given } = require('sazerac')
-const { NotFound } = require('..')
-const AppveyorJobBuild = require('./appveyor-job-build.service')
+import { expect } from 'chai'
+import { test, given } from 'sazerac'
+import { NotFound } from '../index.js'
+import AppveyorJobBuild from './appveyor-job-build.service.js'
 
 describe('AppveyorJobBuild', function () {
   test(AppveyorJobBuild.prototype.transform, () => {
@@ -55,7 +53,7 @@ describe('AppveyorJobBuild', function () {
             ],
           },
         },
-      })
+      }),
     )
       .to.throw(NotFound)
       .with.property('prettyMessage', 'job not found')

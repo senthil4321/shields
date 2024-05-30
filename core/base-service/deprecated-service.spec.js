@@ -1,7 +1,5 @@
-'use strict'
-
-const { expect } = require('chai')
-const deprecatedService = require('./deprecated-service')
+import { expect } from 'chai'
+import deprecatedService from './deprecated-service.js'
 
 describe('DeprecatedService', function () {
   const route = {
@@ -36,16 +34,6 @@ describe('DeprecatedService', function () {
   it('sets specified category', function () {
     const service = deprecatedService({ ...commonAttrs })
     expect(service.category).to.equal(category)
-  })
-
-  it('sets specified examples', function () {
-    const examples = [
-      {
-        title: 'Not sure we would have examples',
-      },
-    ]
-    const service = deprecatedService({ ...commonAttrs, examples })
-    expect(service.examples).to.deep.equal(examples)
   })
 
   it('uses default deprecation message when no message specified', async function () {

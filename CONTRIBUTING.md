@@ -49,8 +49,9 @@ simple changes, like badge additions. These are usually tagged with
 
 Please review [these impeccable guidelines][code review guidelines].
 
-You can monitor [issues][] and the [chat room][], and help other people who
-have questions about contributing to Shields, or using it for their projects.
+You can monitor [issues][], [discussions][] and the [chat room][], and help
+other people who have questions about contributing to Shields, or using it
+for their projects.
 
 Feel free to reach out to one of the [maintainers][]
 if you need help getting started.
@@ -58,6 +59,7 @@ if you need help getting started.
 [service badge pr tag]: https://github.com/badges/shields/pulls?q=is%3Apr+is%3Aopen+label%3Aservice-badge
 [code review guidelines]: https://kickstarter.engineering/a-guide-to-mindful-communication-in-code-reviews-48aab5282e5e
 [issues]: https://github.com/badges/shields/issues
+[discussions]: https://github.com/badges/shields/discussions
 [chat room]: https://discordapp.com/invite/HjJCwm5
 [maintainers]: https://github.com/badges/shields#project-leaders
 
@@ -86,9 +88,9 @@ We're also asking for [one-time \$10 donations](https://opencollective.com/shiel
 There are three places to get help:
 
 1. If you're new to the project, a good place to start is the [tutorial][].
-2. If you need help getting started or implementing a change, [open an issue][]
+2. If you need help getting started or implementing a change, [start a discussion][discussions]
    with your question. We promise it's okay to do that. If there is already an
-   issue open for the feature you're working on, you can post there.
+   issue open for the feature you're working on, you can post there directly.
 3. You can also join the [chat room][] and ask your question there.
 
 [tutorial]: doc/TUTORIAL.md
@@ -96,11 +98,18 @@ There are three places to get help:
 ## Badge guidelines
 
 - Shields.io hosts integrations for services which are primarily
-  used by developers or which are widely used by developers
+  used by developers or which are widely used by developers.
 - The left-hand side of a badge should not advertise. It should be a lowercase _noun_
   succinctly describing the meaning of the right-hand side.
-- Except for badges using the `social` style, logos should be _turned off by
+- Except for badges using the `social` style, logos and links should be _turned off by
   default_.
+- Badges should not obtain data from undocumented or reverse-engineered API endpoints.
+- Badges should not obtain data by scraping web pages - these are likely to break frequently.
+  Whereas API publishers are incentivised to maintain a stable platform for their users,
+  authors of web pages have no such incentive.
+- Badges may require users to specify a token in the badge URL as long it is scoped only to
+  fetching information and doesn't expose any sensitive information. Generating a token with the
+  correct scope must be clearly documented.
 
 ## Badge URLs
 
@@ -122,18 +131,22 @@ Prettier before a commit by default.
 
 ### Tests
 
-When adding or changing a service [please write tests][service-tests].
-
-When opening a pull request, include your service name in brackets in the pull
-request title. That way, those service tests will run in CI.
-
-e.g. **[Travis] Fix timeout issues**
-
+When adding or changing a service [please write tests][service-tests], and ensure the [title of your Pull Requests follows the required conventions](#running-service-tests-in-pull-requests) to ensure your tests are executed.
 When changing other code, please add unit tests.
 
-To run the integration tests, you must have redis installed and in your PATH.
-Use `brew install redis`, `yum install redis`, etc. The test runner will
-start the server automatically.
+The integration tests are not run by default. For most contributions it is OK to skip these unless you're working directly on the code for storing the GitHub token pool in postgres.
+
+To run the integration tests:
+
+- You must have PostgreSQL installed. Use `brew install postgresql`, `apt-get install postgresql`, etc.
+- Set a connection string either with an env var `POSTGRES_URL=postgresql://user:pass@127.0.0.1:5432/db_name` or by using
+  ```yaml
+  private:
+    postgres_url: 'postgresql://user:pass@127.0.0.1:5432/db_name'
+  ```
+  in a yaml config file.
+- Run `npm run migrate up` to apply DB migrations
+- Run `npm run test:integration` to run the tests
 
 [service-tests]: https://github.com/badges/shields/blob/master/doc/service-tests.md
 
@@ -144,3 +157,35 @@ There is a [High-level code walkthrough](doc/code-walkthrough.md) describing the
 ### Logos
 
 We have [documentation for logo usage](doc/logos.md) which includes [contribution guidance](doc/logos.md#contributing-logos)
+
+## Pull Requests
+
+All code changes are incorporated via pull requests, and pull requests are always squashed into a single commit on merging. Therefore there's no requirement to squash commits within your PR, but feel free to squash or restructure the commits on your PR branch if you think it will be helpful. PRs with well structured commits are always easier to review!
+
+Because all changes are pulled into the main branch via squash merges from PRs, we do **not** support overwriting any aspects of the git history once it hits our main branch. Notably this means we do not support amending commit messages, nor adjusting commit author information once merged.
+
+Accordingly, it is the responsibility of contributors to review this type of information and adjust as needed before marking PRs as ready for review and merging.
+
+You can review and modify your local [git configuration][git-config] via `git config`, and also find more information about amending your commit messages [here][amending-commits].
+
+[git-config]: https://git-scm.com/book/en/v2/Customizing-Git-Git-Configuration
+[amending-commits]: https://docs.github.com/en/github/committing-changes-to-your-project/changing-a-commit-message#rewriting-the-most-recent-commit-message
+
+### Running service tests in pull requests
+
+The affected service names must be included in square brackets in the pull request title so that the CI engine will run those service tests. When a pull request affects multiple services, they should be separated with spaces. The test runner is case-insensitive, so they should be capitalized for readability.
+
+For example:
+
+- **[Travis] Fix timeout issues**
+- **[Travis Sonar] Support user token authentication**
+- **Add tests for [CRAN] and [CPAN]**
+
+Note that many services are part of a "family" of related services. Depending on the changes in your PR you may need to run the tests for just a single service, or for _all_ the services within a family.
+
+For example, a PR title of **[GitHubForks] Foo** will only run the service tests specifically for the GitHub Forks badge, whereas a title of **[GitHub] Foo** will run the service tests for all of the GitHub badges.
+
+In the rare case when it's necessary to see the output of a full service-test
+run in a PR (all 2,000+ tests), include `[*****]` in the title. Unless all the tests pass, the build
+will fail, so likely it will be necessary to remove it and re-run the tests
+before merging.

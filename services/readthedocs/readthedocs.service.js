@@ -1,10 +1,6 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { isBuildStatus, renderBuildStatusBadge } = require('../build-status')
-const { BaseSvgScrapingService, NotFound } = require('..')
-
-const keywords = ['documentation']
+import Joi from 'joi'
+import { isBuildStatus, renderBuildStatusBadge } from '../build-status.js'
+import { BaseSvgScrapingService, NotFound, pathParams } from '../index.js'
 
 const schema = Joi.object({
   message: Joi.alternatives()
@@ -12,41 +8,48 @@ const schema = Joi.object({
     .required(),
 }).required()
 
-module.exports = class ReadTheDocs extends BaseSvgScrapingService {
-  static get category() {
-    return 'build'
+const description =
+  '[ReadTheDocs](https://readthedocs.com/) is a hosting service for documentation.'
+
+export default class ReadTheDocs extends BaseSvgScrapingService {
+  static category = 'build'
+
+  static route = {
+    base: 'readthedocs',
+    pattern: ':project/:version?',
   }
 
-  static get route() {
-    return {
-      base: 'readthedocs',
-      pattern: ':project/:version?',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Read the Docs',
-        pattern: ':packageName',
-        namedParams: { packageName: 'pip' },
-        staticPreview: this.render({ status: 'passing' }),
-        keywords,
+  static openApi = {
+    '/readthedocs/{packageName}': {
+      get: {
+        summary: 'Read the Docs',
+        description,
+        parameters: pathParams({
+          name: 'packageName',
+          example: 'pip',
+        }),
       },
-      {
-        title: 'Read the Docs (version)',
-        pattern: ':packageName/:version',
-        namedParams: { packageName: 'pip', version: 'stable' },
-        staticPreview: this.render({ status: 'passing' }),
-        keywords,
+    },
+    '/readthedocs/{packageName}/{version}': {
+      get: {
+        summary: 'Read the Docs (version)',
+        description,
+        parameters: pathParams(
+          {
+            name: 'packageName',
+            example: 'pip',
+          },
+          {
+            name: 'version',
+            example: 'stable',
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'docs',
-    }
+  static defaultBadgeData = {
+    label: 'docs',
   }
 
   static render({ status }) {
@@ -57,9 +60,9 @@ module.exports = class ReadTheDocs extends BaseSvgScrapingService {
     const { message: status } = await this._requestSvg({
       schema,
       url: `https://readthedocs.org/projects/${encodeURIComponent(
-        project
+        project,
       )}/badge/`,
-      options: { qs: { version } },
+      options: { searchParams: { version } },
     })
     if (status === 'unknown') {
       throw new NotFound({

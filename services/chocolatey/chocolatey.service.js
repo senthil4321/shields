@@ -1,11 +1,9 @@
-'use strict'
+import { createServiceFamily } from '../nuget/nuget-v2-service-family.js'
 
-const { createServiceFamily } = require('../nuget/nuget-v2-service-family')
-
-module.exports = createServiceFamily({
+export default createServiceFamily({
   defaultLabel: 'chocolatey',
   serviceBaseUrl: 'chocolatey',
-  apiBaseUrl: 'https://www.chocolatey.org/api/v2',
+  apiBaseUrl: 'https://community.chocolatey.org/api/v2',
   odataFormat: 'json',
   title: 'Chocolatey',
   examplePackageName: 'git',

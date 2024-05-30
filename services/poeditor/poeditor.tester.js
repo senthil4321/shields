@@ -1,7 +1,6 @@
-'use strict'
-
-const { isIntegerPercentage } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isIntegerPercentage } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('gets POEditor progress online')
   .get('/progress/323337/de.json?token=7a666b44c0985d16a7b59748f488275c')
@@ -52,7 +51,7 @@ t.create('gets mock POEditor progress')
         id: '1234',
         api_token: 'abc123def456',
       })
-      .reply(200, apiResponse)
+      .reply(200, apiResponse),
   )
   .expectBadge({
     label: 'French',
@@ -67,7 +66,7 @@ t.create('handles requests for missing languages')
         id: '1234',
         api_token: 'abc123def456',
       })
-      .reply(200, apiResponse)
+      .reply(200, apiResponse),
   )
   .expectBadge({
     label: 'other',
@@ -88,7 +87,7 @@ t.create('handles requests for wrong keys')
           code: '403',
           message: "You don't have permission to access this resource",
         },
-      })
+      }),
   )
   .expectBadge({
     label: 'other',

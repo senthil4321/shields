@@ -1,38 +1,42 @@
-'use strict'
+import Joi from 'joi'
+import { metric } from '../text-formatters.js'
+import { nonNegativeInteger, optionalUrl } from '../validators.js'
+import { BaseJsonService, queryParams } from '../index.js'
 
-const camelcase = require('camelcase')
-const Joi = require('@hapi/joi')
-const { metric } = require('../text-formatters')
-const { nonNegativeInteger, optionalUrl } = require('../validators')
-const { BaseJsonService } = require('..')
-
-const schema = Joi.object({
+const schemaSingular = Joi.object({
   topic_count: nonNegativeInteger,
   user_count: nonNegativeInteger,
   post_count: nonNegativeInteger,
   like_count: nonNegativeInteger,
 }).required()
 
+const schemaPlural = Joi.object({
+  topics_count: nonNegativeInteger,
+  users_count: nonNegativeInteger,
+  posts_count: nonNegativeInteger,
+  likes_count: nonNegativeInteger,
+})
+
+const schema = Joi.alternatives(schemaSingular, schemaPlural)
+
 const queryParamSchema = Joi.object({
   server: optionalUrl.required(),
 }).required()
 
+function singular(variant) {
+  return variant.slice(0, -1)
+}
+
+const params = queryParams({
+  name: 'server',
+  example: 'https://meta.discourse.org',
+  required: true,
+})
+
 class DiscourseBase extends BaseJsonService {
-  static get category() {
-    return 'chat'
-  }
+  static category = 'chat'
 
-  static buildRoute(metric) {
-    return {
-      base: 'discourse',
-      pattern: metric,
-      queryParamSchema,
-    }
-  }
-
-  static get defaultBadgeData() {
-    return { label: 'discourse' }
-  }
+  static defaultBadgeData = { label: 'discourse' }
 
   async fetch({ server }) {
     return this._requestJson({
@@ -42,61 +46,60 @@ class DiscourseBase extends BaseJsonService {
   }
 }
 
-function DiscourseMetricIntegrationFactory({ metricName, property }) {
-  return class DiscourseMetric extends DiscourseBase {
-    static get name() {
-      // The space is needed so we get 'DiscourseTopics' rather than
-      // 'Discoursetopics'. `camelcase()` removes it.
-      return camelcase(`Discourse ${metricName}`, { pascalCase: true })
-    }
+class DiscourseMetric extends DiscourseBase {
+  static route = {
+    base: 'discourse',
+    pattern: ':variant(topics|users|posts|likes)',
+    queryParamSchema,
+  }
 
-    static get route() {
-      return this.buildRoute(metricName)
-    }
+  static openApi = {
+    '/discourse/topics': {
+      get: { summary: 'Discourse Topics', parameters: params },
+    },
+    '/discourse/users': {
+      get: { summary: 'Discourse Users', parameters: params },
+    },
+    '/discourse/posts': {
+      get: { summary: 'Discourse Posts', parameters: params },
+    },
+    '/discourse/likes': {
+      get: { summary: 'Discourse Likes', parameters: params },
+    },
+  }
 
-    static get examples() {
-      return [
-        {
-          title: `Discourse ${metricName}`,
-          namedParams: {},
-          queryParams: {
-            server: 'https://meta.discourse.org',
-          },
-          staticPreview: this.render({ stat: 100 }),
-        },
-      ]
+  static render({ variant, stat }) {
+    return {
+      message: `${metric(stat)} ${variant}`,
+      color: 'brightgreen',
     }
+  }
 
-    static render({ stat }) {
-      return {
-        message: `${metric(stat)} ${metricName}`,
-        color: 'brightgreen',
-      }
+  async handle({ variant }, { server }) {
+    const data = await this.fetch({ server })
+    // e.g. variant == 'topics' --> try 'topic_count' then 'topics_count'
+    let stat = data[`${singular(variant)}_count`]
+    if (stat === undefined) {
+      stat = data[`${variant}_count`]
     }
-
-    async handle(_routeParams, { server }) {
-      const data = await this.fetch({ server })
-      return this.constructor.render({ stat: data[property] })
-    }
+    return this.constructor.render({ variant, stat })
   }
 }
 
 class DiscourseStatus extends DiscourseBase {
-  static get route() {
-    return this.buildRoute('status')
+  static route = {
+    base: 'discourse',
+    pattern: 'status',
+    queryParamSchema,
   }
 
-  static get examples() {
-    return [
-      {
-        title: `Discourse status`,
-        namedParams: {},
-        queryParams: {
-          server: 'https://meta.discourse.org',
-        },
-        staticPreview: this.render(),
+  static openApi = {
+    '/discourse/status': {
+      get: {
+        summary: 'Discourse Status',
+        parameters: params,
       },
-    ]
+    },
   }
 
   static render() {
@@ -114,11 +117,4 @@ class DiscourseStatus extends DiscourseBase {
   }
 }
 
-const metricIntegrations = [
-  { metricName: 'topics', property: 'topic_count' },
-  { metricName: 'users', property: 'user_count' },
-  { metricName: 'posts', property: 'post_count' },
-  { metricName: 'likes', property: 'like_count' },
-].map(DiscourseMetricIntegrationFactory)
-
-module.exports = [...metricIntegrations, DiscourseStatus]
+export default [DiscourseMetric, DiscourseStatus]

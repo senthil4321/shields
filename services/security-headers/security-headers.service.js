@@ -1,55 +1,48 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { optionalUrl } = require('../validators')
-const { BaseService, NotFound } = require('..')
+import Joi from 'joi'
+import { optionalUrl } from '../validators.js'
+import { BaseService, NotFound, queryParams } from '../index.js'
 
 const queryParamSchema = Joi.object({
   url: optionalUrl.required(),
+  ignoreRedirects: Joi.equal(''),
 }).required()
 
-const documentation = `
-<p>
-  The <a href="https://securityheaders.com/">Security Headers</a>
-  provide an easy mechanism to analyze HTTP response headers and
-  give information on how to deploy missing headers.
-</p>
-</p>
-  The scan result will be hidden from the public result list and follow redirects will be on too.
-<p>
+const description = `
+The [Security Headers](https://securityheaders.com/)
+provide an easy mechanism to analyze HTTP response headers and
+give information on how to deploy missing headers.
+
+The scan result will be hidden from the public result list and follow redirects will be on too.
 `
 
-module.exports = class SecurityHeaders extends BaseService {
-  static get category() {
-    return 'monitoring'
+export default class SecurityHeaders extends BaseService {
+  static category = 'monitoring'
+
+  static route = {
+    base: '',
+    pattern: 'security-headers',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: '',
-      pattern: 'security-headers',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Security Headers',
-        namedParams: {},
-        queryParams: { url: 'https://shields.io' },
-        staticPreview: this.render({
-          grade: 'A+',
-        }),
-        documentation,
+  static openApi = {
+    '/security-headers': {
+      get: {
+        summary: 'Security Headers',
+        description,
+        parameters: queryParams(
+          { name: 'url', example: 'https://shields.io', required: true },
+          {
+            name: 'ignoreRedirects',
+            schema: { type: 'boolean' },
+            example: null,
+          },
+        ),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'security headers',
-    }
+  static defaultBadgeData = {
+    label: 'security headers',
   }
 
   static render({ grade }) {
@@ -61,6 +54,7 @@ module.exports = class SecurityHeaders extends BaseService {
       D: 'orange',
       E: 'orange',
       F: 'red',
+      R: 'blue',
     }
 
     return {
@@ -69,15 +63,15 @@ module.exports = class SecurityHeaders extends BaseService {
     }
   }
 
-  async handle(namedParams, { url }) {
+  async handle(namedParams, { url, ignoreRedirects }) {
     const { res } = await this._request({
-      url: `https://securityheaders.com`,
+      url: 'https://securityheaders.com',
       options: {
         method: 'HEAD',
-        qs: {
+        searchParams: {
           q: url,
           hide: 'on',
-          followRedirects: 'on',
+          followRedirects: ignoreRedirects !== undefined ? null : 'on',
         },
       },
     })

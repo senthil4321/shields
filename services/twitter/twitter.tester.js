@@ -1,36 +1,16 @@
-'use strict'
+import { ServiceTester } from '../tester.js'
 
-const { isMetric } = require('../test-validators')
-const { ServiceTester } = require('../tester')
-
-const t = (module.exports = new ServiceTester({
+export const t = new ServiceTester({
   id: 'twitter',
   title: 'Twitter',
-}))
+})
 
 t.create('Followers')
   .get('/follow/shields_io.json')
   .expectBadge({
     label: 'follow @shields_io',
-    message: isMetric,
-    link: [
-      'https://twitter.com/intent/follow?screen_name=shields_io',
-      'https://twitter.com/shields_io/followers',
-    ],
-  })
-
-t.create('Invalid Username Specified (non-existent user)')
-  .get('/follow/invalidusernamethatshouldnotexist.json?label=Follow')
-  .expectBadge({
-    label: 'Follow',
-    message: 'invalid user',
-  })
-
-t.create('Invalid Username Specified (only spaces)')
-  .get('/follow/%20%20.json?label=Follow')
-  .expectBadge({
-    label: 'Follow',
-    message: 'invalid user',
+    message: '',
+    link: ['https://twitter.com/intent/follow?screen_name=shields_io'],
   })
 
 t.create('URL')

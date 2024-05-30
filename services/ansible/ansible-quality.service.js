@@ -1,67 +1,11 @@
-'use strict'
+import { deprecatedService } from '../index.js'
 
-const Joi = require('@hapi/joi')
-const { floorCount } = require('../color-formatters')
-const { BaseJsonService, InvalidResponse } = require('..')
-
-const ansibleContentSchema = Joi.object({
-  quality_score: Joi.number().allow(null).required(),
-}).required()
-
-class AnsibleGalaxyContent extends BaseJsonService {
-  async fetch({ projectId }) {
-    const url = `https://galaxy.ansible.com/api/v1/content/${projectId}/`
-    return this._requestJson({
-      url,
-      schema: ansibleContentSchema,
-    })
-  }
-}
-
-module.exports = class AnsibleGalaxyContentQualityScore extends AnsibleGalaxyContent {
-  static get category() {
-    return 'analysis'
-  }
-
-  static get route() {
-    return {
-      base: 'ansible/quality',
-      pattern: ':projectId',
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Ansible Quality Score',
-        namedParams: {
-          projectId: '432',
-        },
-        staticPreview: this.render({ qualityScore: 4.125 }),
-      },
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return { label: 'quality' }
-  }
-
-  static render({ qualityScore }) {
-    return {
-      message: qualityScore,
-      color: floorCount(qualityScore, 2, 3, 4),
-    }
-  }
-
-  async handle({ projectId }) {
-    const { quality_score: qualityScore } = await this.fetch({ projectId })
-
-    if (qualityScore === null) {
-      throw new InvalidResponse({
-        prettyMessage: 'no score available',
-      })
-    }
-
-    return this.constructor.render({ qualityScore })
-  }
-}
+export const AnsibleGalaxyContentQualityScore = deprecatedService({
+  category: 'analysis',
+  route: {
+    base: 'ansible/quality',
+    pattern: ':projectId',
+  },
+  label: 'quality',
+  dateAdded: new Date('2023-10-10'),
+})

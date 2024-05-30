@@ -1,9 +1,6 @@
-'use strict'
-
-const {
-  isVPlusDottedVersionNClausesWithOptionalSuffixAndEpoch,
-} = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isVPlusDottedVersionNClausesWithOptionalSuffixAndEpoch } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('Arch Linux package (valid)')
   .get('/core/x86_64/pacman.json')
@@ -21,7 +18,7 @@ t.create('Arch Linux package (valid)')
         pkgname: 'pacman',
         pkgver: '5.1.3',
         pkgrel: '1',
-      })
+      }),
   )
   .expectBadge({ label: 'arch linux', message: 'v5.1.3' })
 

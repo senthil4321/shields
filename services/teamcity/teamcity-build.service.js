@@ -1,8 +1,7 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { optionalUrl } = require('../validators')
-const TeamCityBase = require('./teamcity-base')
+import Joi from 'joi'
+import { optionalUrl } from '../validators.js'
+import { pathParam, queryParam } from '../index.js'
+import TeamCityBase from './teamcity-base.js'
 
 const buildStatusSchema = Joi.object({
   status: Joi.equal('SUCCESS', 'FAILURE', 'ERROR').required(),
@@ -13,57 +12,47 @@ const queryParamSchema = Joi.object({
   server: optionalUrl,
 }).required()
 
-module.exports = class TeamCityBuild extends TeamCityBase {
-  static get category() {
-    return 'build'
+export default class TeamCityBuild extends TeamCityBase {
+  static category = 'build'
+
+  static route = {
+    base: 'teamcity/build',
+    pattern: ':verbosity(s|e)/:buildId',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'teamcity/build',
-      pattern: ':verbosity(s|e)/:buildId',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'TeamCity Simple Build Status',
-        namedParams: {
-          verbosity: 's',
-          buildId: 'IntelliJIdeaCe_JavaDecompilerEngineTests',
-        },
-        queryParams: {
-          server: 'https://teamcity.jetbrains.com',
-        },
-        staticPreview: this.render({
-          status: 'SUCCESS',
-        }),
+  static openApi = {
+    '/teamcity/build/s/{buildId}': {
+      get: {
+        summary: 'TeamCity Simple Build Status',
+        parameters: [
+          pathParam({
+            name: 'buildId',
+            example: 'IntelliJIdeaCe_JavaDecompilerEngineTests',
+          }),
+          queryParam({
+            name: 'server',
+            example: 'https://teamcity.jetbrains.com',
+          }),
+        ],
       },
-      {
-        title: 'TeamCity Full Build Status',
-        namedParams: {
-          verbosity: 'e',
-          buildId: 'bt345',
-        },
-        queryParams: {
-          server: 'https://teamcity.jetbrains.com',
-        },
-        staticPreview: this.render({
-          status: 'FAILURE',
-          statusText: 'Tests failed: 4, passed: 1103, ignored: 2',
-          useVerbose: true,
-        }),
-        keywords: ['test', 'test results'],
+    },
+    '/teamcity/build/e/{buildId}': {
+      get: {
+        summary: 'TeamCity Full Build Status',
+        parameters: [
+          pathParam({ name: 'buildId', example: 'bt345' }),
+          queryParam({
+            name: 'server',
+            example: 'https://teamcity.jetbrains.com',
+          }),
+        ],
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'build',
-    }
+  static defaultBadgeData = {
+    label: 'build',
   }
 
   static render({ status, statusText, useVerbose }) {
@@ -87,7 +76,7 @@ module.exports = class TeamCityBuild extends TeamCityBase {
 
   async handle(
     { verbosity, buildId },
-    { server = 'https://teamcity.jetbrains.com' }
+    { server = 'https://teamcity.jetbrains.com' },
   ) {
     // JetBrains Docs: https://confluence.jetbrains.com/display/TCD18/REST+API#RESTAPI-BuildStatusIcon
     const buildLocator = `buildType:(id:${buildId})`

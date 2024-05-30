@@ -1,7 +1,5 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { BaseXmlService, NotFound } = require('..')
+import Joi from 'joi'
+import { BaseXmlService, NotFound } from '../index.js'
 
 const violationSchema = Joi.object({
   severity: Joi.equal('info', 'minor', 'major', 'critical').required(),
@@ -15,7 +13,7 @@ const schema = Joi.object({
         'running',
         'measured',
         'analyzed',
-        'finished'
+        'finished',
       )
         .allow('')
         .required(),
@@ -32,7 +30,8 @@ const schema = Joi.object({
   }).required(),
 }).required()
 
-const keywords = ['sensiolabs', 'sensio']
+const description =
+  'SymfonyInsight (formerly SensioLabs) is a code analysis service'
 
 const gradeColors = {
   none: 'red',
@@ -43,23 +42,17 @@ const gradeColors = {
 }
 
 class SymfonyInsightBase extends BaseXmlService {
-  static get category() {
-    return 'analysis'
+  static category = 'analysis'
+
+  static auth = {
+    userKey: 'sl_insight_userUuid',
+    passKey: 'sl_insight_apiToken',
+    authorizedOrigins: ['https://insight.symfony.com'],
+    isRequired: true,
   }
 
-  static get auth() {
-    return {
-      userKey: 'sl_insight_userUuid',
-      passKey: 'sl_insight_apiToken',
-      authorizedOrigins: ['https://insight.symfony.com'],
-      isRequired: true,
-    }
-  }
-
-  static get defaultBadgeData() {
-    return {
-      label: 'symfony insight',
-    }
+  static defaultBadgeData = {
+    label: 'symfony insight',
   }
 
   async fetch({ projectUuid }) {
@@ -70,7 +63,7 @@ class SymfonyInsightBase extends BaseXmlService {
         options: {
           headers: { Accept: 'application/vnd.com.sensiolabs.insight+xml' },
         },
-        errorMessages: {
+        httpErrors: {
           401: 'not authorized to access project',
           404: 'project not found',
         },
@@ -78,7 +71,7 @@ class SymfonyInsightBase extends BaseXmlService {
           attributeNamePrefix: '',
           ignoreAttributes: false,
         },
-      })
+      }),
     )
   }
 
@@ -132,8 +125,4 @@ class SymfonyInsightBase extends BaseXmlService {
   }
 }
 
-module.exports = {
-  SymfonyInsightBase,
-  keywords,
-  gradeColors,
-}
+export { SymfonyInsightBase, description, gradeColors }

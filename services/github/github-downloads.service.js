@@ -1,12 +1,18 @@
-'use strict'
+import Joi from 'joi'
+import { nonNegativeInteger } from '../validators.js'
+import { renderDownloadsBadge } from '../downloads.js'
+import { NotFound, pathParam, queryParam } from '../index.js'
+import { GithubAuthV3Service } from './github-auth-service.js'
+import { fetchLatestRelease } from './github-common-release.js'
+import { documentation, httpErrorsFor } from './github-helpers.js'
 
-const Joi = require('@hapi/joi')
-const { metric } = require('../text-formatters')
-const { nonNegativeInteger } = require('../validators')
-const { downloadCount: downloadCountColor } = require('../color-formatters')
-const { NotFound } = require('..')
-const { GithubAuthV3Service } = require('./github-auth-service')
-const { documentation, errorMessagesFor } = require('./github-helpers')
+const sortEnum = ['date', 'semver']
+
+const queryParamSchema = Joi.object({
+  sort: Joi.string()
+    .valid(...sortEnum)
+    .default('date'),
+}).required()
 
 const releaseSchema = Joi.object({
   assets: Joi.array()
@@ -19,202 +25,151 @@ const releaseSchema = Joi.object({
 
 const releaseArraySchema = Joi.alternatives().try(
   Joi.array().items(releaseSchema),
-  Joi.array().length(0)
+  Joi.array().length(0),
 )
 
-module.exports = class GithubDownloads extends GithubAuthV3Service {
-  static get category() {
-    return 'downloads'
+const variantParam = pathParam({
+  name: 'variant',
+  example: 'downloads',
+  description: 'downloads including or excluding pre-releases',
+  schema: { type: 'string', enum: ['downloads', 'downloads-pre'] },
+})
+const userParam = pathParam({ name: 'user', example: 'atom' })
+const repoParam = pathParam({ name: 'repo', example: 'atom' })
+const tagParam = pathParam({ name: 'tag', example: 'v0.190.0' })
+const assetNameParam = pathParam({
+  name: 'assetName',
+  example: 'atom-amd64.deb',
+})
+const sortParam = queryParam({
+  name: 'sort',
+  example: 'semver',
+  schema: { type: 'string', enum: sortEnum },
+  description: 'Method used to determine latest release. Default: `date`',
+})
+
+export default class GithubDownloads extends GithubAuthV3Service {
+  static category = 'downloads'
+  static route = {
+    base: 'github',
+    pattern: ':variant(downloads|downloads-pre)/:user/:repo/:tag*/:assetName',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'github',
-      pattern: ':kind(downloads|downloads-pre)/:user/:repo/:tag*/:assetName',
-    }
+  static openApi = {
+    '/github/downloads/{user}/{repo}/total': {
+      get: {
+        summary: 'GitHub Downloads (all assets, all releases)',
+        description: documentation,
+        parameters: [userParam, repoParam],
+      },
+    },
+    '/github/{variant}/{user}/{repo}/latest/total': {
+      get: {
+        summary: 'GitHub Downloads (all assets, latest release)',
+        description: documentation,
+        parameters: [variantParam, userParam, repoParam, sortParam],
+      },
+    },
+    '/github/downloads/{user}/{repo}/{tag}/total': {
+      get: {
+        summary: 'GitHub Downloads (all assets, specific tag)',
+        description: documentation,
+        parameters: [userParam, repoParam, tagParam],
+      },
+    },
+    '/github/downloads/{user}/{repo}/{assetName}': {
+      get: {
+        summary: 'GitHub Downloads (specific asset, all releases)',
+        description: documentation,
+        parameters: [userParam, repoParam, assetNameParam],
+      },
+    },
+    '/github/{variant}/{user}/{repo}/latest/{assetName}': {
+      get: {
+        summary: 'GitHub Downloads (specific asset, latest release)',
+        description: documentation,
+        parameters: [
+          variantParam,
+          userParam,
+          repoParam,
+          assetNameParam,
+          sortParam,
+        ],
+      },
+    },
+    '/github/downloads/{user}/{repo}/{tag}/{assetName}': {
+      get: {
+        summary: 'GitHub Downloads (specific asset, specific tag)',
+        description: documentation,
+        parameters: [userParam, repoParam, tagParam, assetNameParam],
+      },
+    },
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'GitHub All Releases',
-        pattern: 'downloads/:user/:repo/total',
-        namedParams: {
-          user: 'atom',
-          repo: 'atom',
-        },
-        staticPreview: this.render({
-          assetName: 'total',
-          downloadCount: 857000,
-        }),
-        documentation,
-      },
-      {
-        title: 'GitHub Releases',
-        pattern: 'downloads/:user/:repo/:tag/total',
-        namedParams: {
-          user: 'atom',
-          repo: 'atom',
-          tag: 'latest',
-        },
-        staticPreview: this.render({
-          tag: 'latest',
-          assetName: 'total',
-          downloadCount: 27000,
-        }),
-        documentation,
-      },
-      {
-        title: 'GitHub Pre-Releases',
-        pattern: 'downloads-pre/:user/:repo/:tag/total',
-        namedParams: {
-          user: 'atom',
-          repo: 'atom',
-          tag: 'latest',
-        },
-        staticPreview: this.render({
-          tag: 'latest',
-          assetName: 'total',
-          downloadCount: 2000,
-        }),
-        documentation,
-      },
-      {
-        title: 'GitHub Releases (by Release)',
-        pattern: 'downloads/:user/:repo/:tag/total',
-        namedParams: {
-          user: 'atom',
-          repo: 'atom',
-          tag: 'v0.190.0',
-        },
-        staticPreview: this.render({
-          tag: 'v0.190.0',
-          assetName: 'total',
-          downloadCount: 490000,
-        }),
-        documentation,
-      },
-      {
-        title: 'GitHub Releases (by Asset)',
-        pattern: 'downloads/:user/:repo/:tag/:path',
-        namedParams: {
-          user: 'atom',
-          repo: 'atom',
-          tag: 'latest',
-          path: 'atom-amd64.deb',
-        },
-        staticPreview: this.render({
-          tag: 'latest',
-          assetName: 'atom-amd64.deb',
-          downloadCount: 3000,
-        }),
-        documentation,
-      },
-      {
-        title: 'GitHub Pre-Releases (by Asset)',
-        pattern: 'downloads-pre/:user/:repo/:tag/:path',
-        namedParams: {
-          user: 'atom',
-          repo: 'atom',
-          tag: 'latest',
-          path: 'atom-amd64.deb',
-        },
-        staticPreview: this.render({
-          tag: 'latest',
-          assetName: 'atom-amd64.deb',
-          downloadCount: 237,
-        }),
-        documentation,
-      },
-    ]
-  }
+  static defaultBadgeData = { label: 'downloads' }
 
-  static get defaultBadgeData() {
-    return {
-      label: 'downloads',
-      namedLogo: 'github',
-    }
-  }
-
-  static render({ tag, assetName, downloadCount }) {
-    return {
-      label: tag ? `downloads@${tag}` : 'downloads',
-      message:
-        assetName === 'total'
-          ? metric(downloadCount)
-          : `${metric(downloadCount)} [${assetName}]`,
-      color: downloadCountColor(downloadCount),
-    }
+  static render({ tag: version, assetName, downloads }) {
+    const messageSuffixOverride =
+      assetName !== 'total' ? `[${assetName}]` : undefined
+    return renderDownloadsBadge({ downloads, messageSuffixOverride, version })
   }
 
   static transform({ releases, assetName }) {
-    const downloadCount = releases.reduce((accum1, { assets }) => {
+    const downloads = releases.reduce((accum1, { assets }) => {
       const filteredAssets =
         assetName === 'total'
           ? assets
           : assets.filter(
-              ({ name }) => name.toLowerCase() === assetName.toLowerCase()
+              ({ name }) => name.toLowerCase() === assetName.toLowerCase(),
             )
       return (
         accum1 +
         filteredAssets.reduce(
-          (accum2, { download_count: downloadCount }) => accum2 + downloadCount,
-          0
+          (accum2, { download_count: downloads }) => accum2 + downloads,
+          0,
         )
       )
     }, 0)
-    return { downloadCount }
+    return { downloads }
   }
 
-  async handle({ kind, user, repo, tag, assetName }) {
+  async handle({ variant, user, repo, tag, assetName }, { sort }) {
     let releases
-    if (tag === 'latest' && kind === 'downloads') {
-      const latestRelease = await this._requestJson({
-        schema: releaseSchema,
-        url: `/repos/${user}/${repo}/releases/latest`,
-        errorMessages: errorMessagesFor('repo not found'),
-      })
+    if (tag === 'latest') {
+      const includePre = variant === 'downloads-pre' || undefined
+      const latestRelease = await fetchLatestRelease(
+        this,
+        { user, repo },
+        { sort, include_prereleases: includePre },
+      )
       releases = [latestRelease]
-    } else if (tag === 'latest') {
-      // Keep only the latest release.
-      const [latestReleaseIncludingPrereleases] = await this._requestJson({
-        schema: releaseArraySchema,
-        url: `/repos/${user}/${repo}/releases`,
-        options: { qs: { per_page: 1 } },
-        errorMessages: errorMessagesFor('repo not found'),
-      })
-      // Note that the API will return an empty array if there are no releases
-      // https://github.com/badges/shields/issues/3786
-      if (!latestReleaseIncludingPrereleases) {
-        throw new NotFound({ prettyMessage: 'no releases' })
-      }
-      releases = [latestReleaseIncludingPrereleases]
     } else if (tag) {
       const wantedRelease = await this._requestJson({
         schema: releaseSchema,
         url: `/repos/${user}/${repo}/releases/tags/${tag}`,
-        errorMessages: errorMessagesFor('repo or release not found'),
+        httpErrors: httpErrorsFor('repo or release not found'),
       })
       releases = [wantedRelease]
     } else {
       const allReleases = await this._requestJson({
         schema: releaseArraySchema,
         url: `/repos/${user}/${repo}/releases`,
-        options: { qs: { per_page: 500 } },
-        errorMessages: errorMessagesFor('repo not found'),
+        options: { searchParams: { per_page: 500 } },
+        httpErrors: httpErrorsFor('repo not found'),
       })
       releases = allReleases
     }
 
     if (releases.length === 0) {
-      throw new NotFound({ prettyMessage: 'no releases' })
+      throw new NotFound({ prettyMessage: 'no releases found' })
     }
 
-    const { downloadCount } = this.constructor.transform({
+    const { downloads } = this.constructor.transform({
       releases,
       assetName,
     })
 
-    return this.constructor.render({ tag, assetName, downloadCount })
+    return this.constructor.render({ tag, assetName, downloads })
   }
 }

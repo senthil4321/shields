@@ -1,10 +1,11 @@
-'use strict'
+import Joi from 'joi'
+import log from '../../core/server/log.js'
+import { TokenPool } from '../../core/token-pooling/token-pool.js'
+import { getUserAgent } from '../../core/base-service/got-config.js'
+import { nonNegativeInteger } from '../validators.js'
+import { ImproperlyConfigured } from '../index.js'
 
-const Joi = require('@hapi/joi')
-const log = require('../../core/server/log')
-const { TokenPool } = require('../../core/token-pooling/token-pool')
-const { userAgent } = require('../../core/base-service/legacy-request-handler')
-const { nonNegativeInteger } = require('../validators')
+const userAgent = getUserAgent()
 
 const headerSchema = Joi.object({
   'x-ratelimit-limit': nonNegativeInteger,
@@ -32,44 +33,40 @@ const bodySchema = Joi.object({
 
 // Provides an interface to the Github API. Manages the base URL.
 class GithubApiProvider {
+  static AUTH_TYPES = {
+    NO_AUTH: 'No Auth',
+    GLOBAL_TOKEN: 'Global Token',
+    TOKEN_POOL: 'Token Pool',
+  }
+
   // reserveFraction: The amount of much of a token's quota we avoid using, to
   //   reserve it for the user.
   constructor({
     baseUrl,
-    withPooling = true,
+    authType = this.constructor.AUTH_TYPES.NO_AUTH,
     onTokenInvalidated = tokenString => {},
     globalToken,
     reserveFraction = 0.25,
+    restApiVersion,
   }) {
     Object.assign(this, {
       baseUrl,
-      withPooling,
+      authType,
       onTokenInvalidated,
       globalToken,
       reserveFraction,
     })
 
-    if (this.withPooling) {
+    if (this.authType === this.constructor.AUTH_TYPES.TOKEN_POOL) {
       this.standardTokens = new TokenPool({ batchSize: 25 })
       this.searchTokens = new TokenPool({ batchSize: 5 })
       this.graphqlTokens = new TokenPool({ batchSize: 25 })
     }
-  }
-
-  serializeDebugInfo({ sanitize = true } = {}) {
-    if (this.withPooling) {
-      return {
-        standardTokens: this.standardTokens.serializeDebugInfo({ sanitize }),
-        searchTokens: this.searchTokens.serializeDebugInfo({ sanitize }),
-        graphqlTokens: this.graphqlTokens.serializeDebugInfo({ sanitize }),
-      }
-    } else {
-      return {}
-    }
+    this.restApiVersion = restApiVersion
   }
 
   addToken(tokenString) {
-    if (this.withPooling) {
+    if (this.authType === this.constructor.AUTH_TYPES.TOKEN_POOL) {
       this.standardTokens.add(tokenString)
       this.searchTokens.add(tokenString)
       this.graphqlTokens.add(tokenString)
@@ -88,8 +85,7 @@ class GithubApiProvider {
   }
 
   getV4RateLimitFromBody(body) {
-    const parsedBody = JSON.parse(body)
-    const b = Joi.attempt(parsedBody, bodySchema)
+    const b = Joi.attempt(body, bodySchema)
     return {
       rateLimit: b.data.rateLimit.limit,
       totalUsesRemaining: b.data.rateLimit.remaining,
@@ -101,25 +97,28 @@ class GithubApiProvider {
     let rateLimit, totalUsesRemaining, nextReset
     if (url.startsWith('/graphql')) {
       try {
-        ;({
-          rateLimit,
-          totalUsesRemaining,
-          nextReset,
-        } = this.getV4RateLimitFromBody(res.body))
+        const parsedBody = JSON.parse(res.body)
+
+        if ('message' in parsedBody && !('data' in parsedBody)) {
+          if (parsedBody.message === 'Sorry. Your account was suspended.') {
+            this.invalidateToken(token)
+            return
+          }
+        }
+
+        ;({ rateLimit, totalUsesRemaining, nextReset } =
+          this.getV4RateLimitFromBody(parsedBody))
       } catch (e) {
         console.error(
-          `Could not extract rate limit info from response body ${res.body}`
+          `Could not extract rate limit info from response body ${res.body}`,
         )
         log.error(e)
         return
       }
     } else {
       try {
-        ;({
-          rateLimit,
-          totalUsesRemaining,
-          nextReset,
-        } = this.getV3RateLimitFromHeaders(res.headers))
+        ;({ rateLimit, totalUsesRemaining, nextReset } =
+          this.getV3RateLimitFromHeaders(res.headers))
       } catch (e) {
         const logHeaders = {
           'x-ratelimit-limit': res.headers['x-ratelimit-limit'],
@@ -130,8 +129,8 @@ class GithubApiProvider {
           `Invalid GitHub rate limit headers ${JSON.stringify(
             logHeaders,
             undefined,
-            2
-          )}`
+            2,
+          )}`,
         )
         log.error(e)
         return
@@ -159,64 +158,52 @@ class GithubApiProvider {
     }
   }
 
-  // Act like request(), but tweak headers and query to avoid hitting a rate
-  // limit. Inject `request` so we can pass in `cachingRequest` from
-  // `request-handler.js`.
-  request(request, url, options = {}, callback) {
+  async fetch(requestFetcher, url, options = {}) {
     const { baseUrl } = this
 
     let token
     let tokenString
-    if (this.withPooling) {
+    if (this.authType === this.constructor.AUTH_TYPES.TOKEN_POOL) {
       try {
         token = this.tokenForUrl(url)
       } catch (e) {
-        callback(e)
-        return
+        log.error(e)
+        throw new ImproperlyConfigured({
+          prettyMessage: 'Unable to select next GitHub token from pool',
+        })
       }
       tokenString = token.id
-    } else {
+    } else if (this.authType === this.constructor.AUTH_TYPES.GLOBAL_TOKEN) {
       tokenString = this.globalToken
     }
 
     const mergedOptions = {
       ...options,
       ...{
-        url,
-        baseUrl,
         headers: {
           'User-Agent': userAgent,
-          Accept: 'application/vnd.github.v3+json',
-          Authorization: `token ${tokenString}`,
+          'X-GitHub-Api-Version': this.restApiVersion,
+          ...options.headers,
         },
       },
     }
+    if (
+      this.authType === this.constructor.AUTH_TYPES.TOKEN_POOL ||
+      this.authType === this.constructor.AUTH_TYPES.GLOBAL_TOKEN
+    ) {
+      mergedOptions.headers.Authorization = `token ${tokenString}`
+    }
 
-    request(mergedOptions, (err, res, buffer) => {
-      if (err === null) {
-        if (this.withPooling) {
-          if (res.statusCode === 401) {
-            this.invalidateToken(token)
-          } else if (res.statusCode < 500) {
-            this.updateToken({ token, url, res })
-          }
-        }
+    const response = await requestFetcher(`${baseUrl}${url}`, mergedOptions)
+    if (this.authType === this.constructor.AUTH_TYPES.TOKEN_POOL) {
+      if (response.res.statusCode === 401) {
+        this.invalidateToken(token)
+      } else if (response.res.statusCode < 500) {
+        this.updateToken({ token, url, res: response.res })
       }
-      callback(err, res, buffer)
-    })
-  }
-
-  requestAsPromise(request, url, options) {
-    return new Promise((resolve, reject) => {
-      this.request(request, url, options, (err, res, buffer) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve({ res, buffer })
-        }
-      })
-    })
+    }
+    return response
   }
 }
 
-module.exports = GithubApiProvider
+export default GithubApiProvider

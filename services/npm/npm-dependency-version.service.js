@@ -1,115 +1,72 @@
-'use strict'
+import { pathParam, queryParam } from '../index.js'
+import { getDependencyVersion } from '../package-json-helpers.js'
+import NpmBase, {
+  queryParamSchema,
+  packageNameDescription,
+} from './npm-base.js'
 
-const { getDependencyVersion } = require('../package-json-helpers')
-const NpmBase = require('./npm-base')
+export default class NpmDependencyVersion extends NpmBase {
+  static category = 'platform-support'
 
-const { queryParamSchema } = NpmBase
-const keywords = ['node']
-
-module.exports = class NpmDependencyVersion extends NpmBase {
-  static get category() {
-    return 'platform-support'
+  static route = {
+    base: 'npm/dependency-version',
+    pattern:
+      ':scope(@[^/]+)?/:packageName/:kind(dev|peer)?/:dependencyScope(@[^/]+)?/:dependency',
+    queryParamSchema,
   }
 
-  static get route() {
-    return {
-      base: 'npm/dependency-version',
-      pattern:
-        ':scope(@[^/]+)?/:packageName/:kind(dev|peer)?/:dependencyScope(@[^/]+)?/:dependency',
-      queryParamSchema,
-    }
+  static openApi = {
+    '/npm/dependency-version/{packageName}/{dependency}': {
+      get: {
+        summary: 'NPM (prod) Dependency Version',
+        parameters: [
+          pathParam({
+            name: 'packageName',
+            example: 'react-boxplot',
+            description: packageNameDescription,
+          }),
+          pathParam({
+            name: 'dependency',
+            example: 'simple-statistics',
+            description: packageNameDescription,
+          }),
+          queryParam({
+            name: 'registry_uri',
+            example: 'https://registry.npmjs.com',
+          }),
+        ],
+      },
+    },
+    '/npm/dependency-version/{packageName}/{kind}/{dependency}': {
+      get: {
+        summary: 'NPM dev or peer Dependency Version',
+        parameters: [
+          pathParam({
+            name: 'packageName',
+            example: 'react-boxplot',
+            description: packageNameDescription,
+          }),
+          pathParam({
+            name: 'kind',
+            example: 'dev',
+            schema: { type: 'string', enum: this.getEnum('kind') },
+          }),
+          pathParam({
+            name: 'dependency',
+            example: 'prop-types',
+            description: packageNameDescription,
+          }),
+          queryParam({
+            name: 'registry_uri',
+            example: 'https://registry.npmjs.com',
+          }),
+        ],
+      },
+    },
   }
 
-  static get examples() {
-    return [
-      {
-        title: 'npm peer dependency version',
-        pattern: ':packageName/peer/:dependency',
-        namedParams: {
-          packageName: 'react-boxplot',
-          dependency: 'prop-types',
-        },
-        staticPreview: this.render({
-          dependency: 'prop-types',
-          range: '^15.5.4',
-        }),
-        keywords,
-      },
-      {
-        title: 'npm peer dependency version (scoped)',
-        pattern: ':scope?/:packageName/dev/:dependencyScope?/:dependency',
-        namedParams: {
-          scope: '@swellaby',
-          packageName: 'eslint-config',
-          dependency: 'eslint',
-        },
-        staticPreview: this.render({
-          dependency: 'eslint',
-          range: '^3.0.0',
-        }),
-        keywords,
-      },
-      {
-        title: 'npm dev dependency version',
-        pattern: ':packageName/dev/:dependency',
-        namedParams: {
-          packageName: 'react-boxplot',
-          dependency: 'eslint-config-standard',
-        },
-        staticPreview: this.render({
-          dependency: 'eslint-config-standard',
-          range: '^12.0.0',
-        }),
-        keywords,
-      },
-      {
-        title: 'npm dev dependency version (scoped)',
-        pattern: ':scope?/:packageName/dev/:dependencyScope?/:dependency',
-        namedParams: {
-          packageName: 'mocha',
-          dependencyScope: '@mocha',
-          dependency: 'contributors',
-        },
-        staticPreview: this.render({
-          dependency: '@mocha/contributors',
-          range: '^1.0.3',
-        }),
-        keywords,
-      },
-      {
-        title: 'npm (prod) dependency version',
-        pattern: ':packageName/:dependency',
-        namedParams: {
-          packageName: 'react-boxplot',
-          dependency: 'simple-statistics',
-        },
-        staticPreview: this.render({
-          dependency: 'simple-statistics',
-          range: '^6.1.1',
-        }),
-        keywords,
-      },
-      {
-        title: 'npm (prod) dependency version (scoped)',
-        pattern: ':scope?/:packageName/:dependencyScope?/:dependency',
-        namedParams: {
-          packageName: 'got',
-          dependencyScope: '@sindresorhus',
-          dependency: 'is',
-        },
-        staticPreview: this.render({
-          dependency: '@sindresorhus/is',
-          range: '^0.15.0',
-        }),
-        keywords,
-      },
-    ]
-  }
-
-  static get defaultBadgeData() {
-    return {
-      label: 'dependency',
-    }
+  static defaultBadgeData = {
+    label: 'dependency',
   }
 
   static render({ dependency, range }) {
@@ -123,24 +80,21 @@ module.exports = class NpmDependencyVersion extends NpmBase {
   async handle(namedParams, queryParams) {
     const { scope, packageName, registryUrl } = this.constructor.unpackParams(
       namedParams,
-      queryParams
+      queryParams,
     )
     const { kind, dependency, dependencyScope } = namedParams
     const wantedDependency = `${
       dependencyScope ? `${dependencyScope}/` : ''
     }${dependency}`
 
-    const {
-      dependencies,
-      devDependencies,
-      peerDependencies,
-    } = await this.fetchPackageData({
-      scope,
-      packageName,
-      registryUrl,
-    })
+    const { dependencies, devDependencies, peerDependencies } =
+      await this.fetchPackageData({
+        scope,
+        packageName,
+        registryUrl,
+      })
 
-    const { range } = getDependencyVersion({
+    const range = getDependencyVersion({
       kind,
       wantedDependency,
       dependencies,

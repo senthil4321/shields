@@ -1,9 +1,8 @@
-'use strict'
 /**
  * @module
  */
 
-const { BaseJsonService } = require('..')
+import { BaseJsonService } from '../index.js'
 
 /**
  * The steam api is based like /{interface}/{method}/v{version}/
@@ -46,7 +45,7 @@ class BaseSteamAPI extends BaseJsonService {
     return this._requestJson({
       url,
       schema,
-      errorMessages: {
+      httpErrors: {
         400: 'bad request',
       },
       options,
@@ -54,4 +53,4 @@ class BaseSteamAPI extends BaseJsonService {
   }
 }
 
-module.exports = BaseSteamAPI
+export default BaseSteamAPI

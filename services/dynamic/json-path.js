@@ -2,12 +2,10 @@
  * @module
  */
 
-'use strict'
-
-const Joi = require('@hapi/joi')
-const jp = require('jsonpath')
-const { renderDynamicBadge, errorMessages } = require('../dynamic-common')
-const { InvalidParameter, InvalidResponse } = require('..')
+import Joi from 'joi'
+import jp from 'jsonpath'
+import { renderDynamicBadge, httpErrors } from '../dynamic-common.js'
+import { InvalidParameter, InvalidResponse } from '../index.js'
 
 /**
  * Dynamic service class factory which wraps {@link module:core/base-service/base~BaseService} with support of {@link https://jsonpath.com/|JSONPath}.
@@ -15,17 +13,10 @@ const { InvalidParameter, InvalidResponse } = require('..')
  * @param {Function} superclass class to extend
  * @returns {Function} wrapped class
  */
-module.exports = superclass =>
+export default superclass =>
   class extends superclass {
-    static get category() {
-      return 'dynamic'
-    }
-
-    static get defaultBadgeData() {
-      return {
-        label: 'custom badge',
-      }
-    }
+    static category = 'dynamic'
+    static defaultBadgeData = { label: 'custom badge' }
 
     /**
      * Request data from an upstream API, transform it to JSON and validate against a schema
@@ -33,15 +24,15 @@ module.exports = superclass =>
      * @param {object} attrs Refer to individual attrs
      * @param {Joi} attrs.schema Joi schema to validate the response transformed to JSON
      * @param {string} attrs.url URL to request
-     * @param {object} [attrs.errorMessages={}] Key-value map of status codes
+     * @param {object} [attrs.httpErrors={}] Key-value map of status codes
      *    and custom error messages e.g: `{ 404: 'package not found' }`.
      *    This can be used to extend or override the
      *    [default](https://github.com/badges/shields/blob/master/services/dynamic-common.js#L8)
      * @returns {object} Parsed response
      */
-    async fetch({ schema, url, errorMessages }) {
+    async fetch({ schema, url, httpErrors }) {
       throw new Error(
-        `fetch() function not implemented for ${this.constructor.name}`
+        `fetch() function not implemented for ${this.constructor.name}`,
       )
     }
 
@@ -49,7 +40,7 @@ module.exports = superclass =>
       const data = await this.fetch({
         schema: Joi.any(),
         url,
-        errorMessages,
+        httpErrors,
       })
 
       // JSONPath only works on objects and arrays.

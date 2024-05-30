@@ -1,32 +1,21 @@
-'use strict'
+import PypiBase, { pypiGeneralParams } from './pypi-base.js'
+import { parseClassifiers } from './pypi-helpers.js'
 
-const PypiBase = require('./pypi-base')
-const { parseClassifiers } = require('./pypi-helpers')
+export default class PypiStatus extends PypiBase {
+  static category = 'other'
 
-module.exports = class PypiStatus extends PypiBase {
-  static get category() {
-    return 'other'
-  }
+  static route = this.buildRoute('pypi/status')
 
-  static get route() {
-    return this.buildRoute('pypi/status')
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'PyPI - Status',
-        pattern: ':packageName',
-        namedParams: { packageName: 'Django' },
-        staticPreview: this.render({ status: 'stable' }),
-        keywords: ['python'],
+  static openApi = {
+    '/pypi/status/{packageName}': {
+      get: {
+        summary: 'PyPI - Status',
+        parameters: pypiGeneralParams,
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'status' }
-  }
+  static defaultBadgeData = { label: 'status' }
 
   static render({ status = '' }) {
     status = status.toLowerCase()
@@ -39,6 +28,7 @@ module.exports = class PypiStatus extends PypiBase {
       stable: 'brightgreen',
       mature: 'brightgreen',
       inactive: 'red',
+      unknown: 'lightgrey',
     }[status]
 
     return {
@@ -47,8 +37,8 @@ module.exports = class PypiStatus extends PypiBase {
     }
   }
 
-  async handle({ egg }) {
-    const packageData = await this.fetch({ egg })
+  async handle({ egg }, { pypiBaseUrl }) {
+    const packageData = await this.fetch({ egg, pypiBaseUrl })
 
     // Possible statuses:
     // - Development Status :: 1 - Planning
@@ -59,14 +49,18 @@ module.exports = class PypiStatus extends PypiBase {
     // - Development Status :: 6 - Mature
     // - Development Status :: 7 - Inactive
     // https://pypi.org/pypi?%3Aaction=list_classifiers
-    const status = parseClassifiers(
+    let status = parseClassifiers(
       packageData,
-      /^Development Status :: (\d - \S+)$/
+      /^Development Status :: (\d - \S+)$/,
     )
       .sort()
       .map(classifier => classifier.split(' - ').pop())
       .map(classifier => classifier.replace(/production\/stable/i, 'stable'))
       .pop()
+
+    if (!status) {
+      status = 'Unknown'
+    }
 
     return this.constructor.render({ status })
   }

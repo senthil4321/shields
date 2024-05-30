@@ -1,8 +1,6 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const { optionalUrl } = require('../validators')
-const { BaseJsonService } = require('..')
+import Joi from 'joi'
+import { optionalUrl } from '../validators.js'
+import { BaseJsonService, pathParam, queryParam } from '../index.js'
 
 const queryParamSchema = Joi.object({
   baseUrl: optionalUrl,
@@ -14,64 +12,43 @@ const schema = Joi.object({
       Joi.object({
         status: Joi.string().required(),
         resolution: Joi.string().allow('').required(),
-      }).required()
+      }).required(),
     )
     .min(1)
     .required(),
 }).required()
 
-const documentation = `
-<p>
-  If your Bugzilla badge errors, it might be because you are trying to load a private bug.
-</p>
+const description = `
+Use the <code>baseUrl</code> query parameter to target different Bugzilla deployments.
+If your Bugzilla badge errors, it might be because you are trying to load a private bug.
 `
 
-module.exports = class Bugzilla extends BaseJsonService {
-  static get category() {
-    return 'issue-tracking'
-  }
+export default class Bugzilla extends BaseJsonService {
+  static category = 'issue-tracking'
+  static route = { base: 'bugzilla', pattern: ':bugNumber', queryParamSchema }
 
-  static get route() {
-    return {
-      base: 'bugzilla',
-      pattern: ':bugNumber',
-      queryParamSchema,
-    }
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Bugzilla bug status (Mozilla)',
-        namedParams: {
-          bugNumber: '996038',
-        },
-        staticPreview: this.render({
-          bugNumber: 996038,
-          status: 'FIXED',
-          resolution: '',
-        }),
-        documentation,
+  static openApi = {
+    '/bugzilla/{bugNumber}': {
+      get: {
+        summary: 'Bugzilla bug status',
+        description,
+        parameters: [
+          pathParam({
+            name: 'bugNumber',
+            example: '545424',
+          }),
+          queryParam({
+            name: 'baseUrl',
+            example: 'https://bugs.eclipse.org/bugs',
+            description:
+              'When not specified, this will default to `https://bugzilla.mozilla.org`.',
+          }),
+        ],
       },
-      {
-        title: 'Bugzilla bug status (non-Mozilla)',
-        namedParams: {
-          bugNumber: '545424',
-        },
-        queryParams: { baseUrl: 'https://bugs.eclipse.org/bugs' },
-        staticPreview: this.render({
-          bugNumber: 545424,
-          status: 'RESOLVED',
-          resolution: 'FIXED',
-        }),
-        documentation,
-      },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'bugzilla' }
-  }
+  static defaultBadgeData = { label: 'bugzilla' }
 
   static getDisplayStatus({ status, resolution }) {
     let displayStatus =

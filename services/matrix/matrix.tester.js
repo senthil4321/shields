@@ -1,7 +1,6 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const t = (module.exports = require('../tester').createServiceTester())
+import Joi from 'joi'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('get room state as guest')
   .get('/ALIAS:DUMMY.dumb.json')
@@ -12,19 +11,19 @@ t.create('get room state as guest')
         200,
         JSON.stringify({
           access_token: 'TOKEN',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN'
+        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN',
       )
       .reply(
         200,
         JSON.stringify({
           room_id: 'ROOM:DUMMY.dumb',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/rooms/ROOM%3ADUMMY.dumb/state?access_token=TOKEN'
+        '/_matrix/client/r0/rooms/ROOM%3ADUMMY.dumb/state?access_token=TOKEN',
       )
       .reply(
         200,
@@ -65,8 +64,8 @@ t.create('get room state as guest')
               membership: 'fake room',
             },
           },
-        ])
-      )
+        ]),
+      ),
   )
   .expectBadge({
     label: 'chat',
@@ -84,26 +83,26 @@ t.create('get room state as member (backup method)')
         JSON.stringify({
           errcode: 'M_GUEST_ACCESS_FORBIDDEN',
           error: 'Guest access not allowed',
-        })
+        }),
       )
       .post('/_matrix/client/r0/register')
       .reply(
         200,
         JSON.stringify({
           access_token: 'TOKEN',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN'
+        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN',
       )
       .reply(
         200,
         JSON.stringify({
           room_id: 'ROOM:DUMMY.dumb',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/rooms/ROOM%3ADUMMY.dumb/state?access_token=TOKEN'
+        '/_matrix/client/r0/rooms/ROOM%3ADUMMY.dumb/state?access_token=TOKEN',
       )
       .reply(
         200,
@@ -144,8 +143,8 @@ t.create('get room state as member (backup method)')
               membership: 'fake room',
             },
           },
-        ])
-      )
+        ]),
+      ),
   )
   .expectBadge({
     label: 'chat',
@@ -171,27 +170,27 @@ t.create('non-world readable room')
         200,
         JSON.stringify({
           access_token: 'TOKEN',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN'
+        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN',
       )
       .reply(
         200,
         JSON.stringify({
           room_id: 'ROOM:DUMMY.dumb',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/rooms/ROOM%3ADUMMY.dumb/state?access_token=TOKEN'
+        '/_matrix/client/r0/rooms/ROOM%3ADUMMY.dumb/state?access_token=TOKEN',
       )
       .reply(
         403,
         JSON.stringify({
           errcode: 'M_GUEST_ACCESS_FORBIDDEN',
           error: 'Guest access not allowed',
-        })
-      )
+        }),
+      ),
   )
   .expectBadge({
     label: 'chat',
@@ -208,18 +207,18 @@ t.create('invalid token')
         200,
         JSON.stringify({
           access_token: 'TOKEN',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN'
+        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN',
       )
       .reply(
         401,
         JSON.stringify({
           errcode: 'M_UNKNOWN_TOKEN',
           error: 'Unrecognised access token.',
-        })
-      )
+        }),
+      ),
   )
   .expectBadge({
     label: 'chat',
@@ -236,27 +235,27 @@ t.create('unknown request')
         200,
         JSON.stringify({
           access_token: 'TOKEN',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN'
+        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN',
       )
       .reply(
         200,
         JSON.stringify({
           room_id: 'ROOM:DUMMY.dumb',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/rooms/ROOM%3ADUMMY.dumb/state?access_token=TOKEN'
+        '/_matrix/client/r0/rooms/ROOM%3ADUMMY.dumb/state?access_token=TOKEN',
       )
       .reply(
         400,
         JSON.stringify({
           errcode: 'M_UNRECOGNIZED',
           error: 'Unrecognized request',
-        })
-      )
+        }),
+      ),
   )
   .expectBadge({
     label: 'chat',
@@ -273,18 +272,18 @@ t.create('unknown alias')
         200,
         JSON.stringify({
           access_token: 'TOKEN',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN'
+        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN',
       )
       .reply(
         404,
         JSON.stringify({
           errcode: 'M_NOT_FOUND',
           error: 'Room alias #ALIAS%3ADUMMY.dumb not found.',
-        })
-      )
+        }),
+      ),
   )
   .expectBadge({
     label: 'chat',
@@ -307,19 +306,19 @@ t.create('server uses a custom port')
         200,
         JSON.stringify({
           access_token: 'TOKEN',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb%3A5555?access_token=TOKEN'
+        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb%3A5555?access_token=TOKEN',
       )
       .reply(
         200,
         JSON.stringify({
           room_id: 'ROOM:DUMMY.dumb:5555',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/rooms/ROOM%3ADUMMY.dumb%3A5555/state?access_token=TOKEN'
+        '/_matrix/client/r0/rooms/ROOM%3ADUMMY.dumb%3A5555/state?access_token=TOKEN',
       )
       .reply(
         200,
@@ -360,8 +359,8 @@ t.create('server uses a custom port')
               membership: 'fake room',
             },
           },
-        ])
-      )
+        ]),
+      ),
   )
   .expectBadge({
     label: 'chat',
@@ -378,19 +377,19 @@ t.create('specify the homeserver fqdn')
         200,
         JSON.stringify({
           access_token: 'TOKEN',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN'
+        '/_matrix/client/r0/directory/room/%23ALIAS%3ADUMMY.dumb?access_token=TOKEN',
       )
       .reply(
         200,
         JSON.stringify({
           room_id: 'ROOM:DUMMY.dumb',
-        })
+        }),
       )
       .get(
-        '/_matrix/client/r0/rooms/ROOM%3ADUMMY.dumb/state?access_token=TOKEN'
+        '/_matrix/client/r0/rooms/ROOM%3ADUMMY.dumb/state?access_token=TOKEN',
       )
       .reply(
         200,
@@ -431,8 +430,8 @@ t.create('specify the homeserver fqdn')
               membership: 'fake room',
             },
           },
-        ])
-      )
+        ]),
+      ),
   )
   .expectBadge({
     label: 'chat',

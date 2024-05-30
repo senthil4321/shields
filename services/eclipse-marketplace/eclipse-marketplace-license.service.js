@@ -1,7 +1,6 @@
-'use strict'
-
-const Joi = require('@hapi/joi')
-const EclipseMarketplaceBase = require('./eclipse-marketplace-base')
+import Joi from 'joi'
+import { pathParams } from '../index.js'
+import EclipseMarketplaceBase from './eclipse-marketplace-base.js'
 
 const licenseResponseSchema = Joi.object({
   marketplace: Joi.object({
@@ -11,28 +10,26 @@ const licenseResponseSchema = Joi.object({
   }),
 }).required()
 
-module.exports = class EclipseMarketplaceLicense extends EclipseMarketplaceBase {
-  static get category() {
-    return 'license'
+export default class EclipseMarketplaceLicense extends EclipseMarketplaceBase {
+  static category = 'license'
+  static route = {
+    base: 'eclipse-marketplace/l',
+    pattern: ':name',
   }
 
-  static get route() {
-    return this.buildRoute('eclipse-marketplace/l')
-  }
-
-  static get examples() {
-    return [
-      {
-        title: 'Eclipse Marketplace',
-        namedParams: { name: 'notepad4e' },
-        staticPreview: this.render({ license: 'GPL' }),
+  static openApi = {
+    '/eclipse-marketplace/l/{name}': {
+      get: {
+        summary: 'Eclipse Marketplace License',
+        parameters: pathParams({
+          name: 'name',
+          example: 'notepad4e',
+        }),
       },
-    ]
+    },
   }
 
-  static get defaultBadgeData() {
-    return { label: 'license' }
-  }
+  static defaultBadgeData = { label: 'license' }
 
   static render({ license }) {
     if (license === '') {

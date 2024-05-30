@@ -1,7 +1,6 @@
-'use strict'
-
-const { isIntegerPercentage } = require('../test-validators')
-const t = (module.exports = require('../tester').createServiceTester())
+import { isIntegerPercentage } from '../test-validators.js'
+import { createServiceTester } from '../tester.js'
+export const t = await createServiceTester()
 
 t.create('invalid buildId')
   .get('/btABC999.json')
@@ -25,7 +24,7 @@ t.create('no coverage data for build')
     nock('https://teamcity.jetbrains.com/app/rest/builds')
       .get(`/${encodeURIComponent('buildType:(id:bt234)')}/statistics`)
       .query({ guest: 1 })
-      .reply(200, { property: [] })
+      .reply(200, { property: [] }),
   )
   .expectBadge({ label: 'coverage', message: 'no coverage data available' })
 
@@ -46,7 +45,7 @@ t.create('zero lines covered')
             value: '345',
           },
         ],
-      })
+      }),
   )
   .expectBadge({
     label: 'coverage',

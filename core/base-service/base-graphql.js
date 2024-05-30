@@ -2,12 +2,10 @@
  * @module
  */
 
-'use strict'
-
-const { print } = require('graphql/language/printer')
-const BaseService = require('./base')
-const { InvalidResponse, ShieldsRuntimeError } = require('./errors')
-const { parseJson } = require('./json')
+import { print } from 'graphql/language/printer.js'
+import BaseService from './base.js'
+import { InvalidResponse, ShieldsRuntimeError } from './errors.js'
+import { parseJson } from './json.js'
 
 function defaultTransformErrors(errors) {
   return new InvalidResponse({ prettyMessage: errors[0].message })
@@ -22,7 +20,7 @@ class BaseGraphqlService extends BaseService {
   /**
    * Parse data from JSON endpoint
    *
-   * @param {string} buffer JSON repsonse from upstream API
+   * @param {string} buffer JSON response from upstream API
    * @returns {object} Parsed response
    */
   _parseJson(buffer) {
@@ -40,19 +38,30 @@ class BaseGraphqlService extends BaseService {
    *    representing the query clause of GraphQL POST body
    *    e.g. gql`{ query { ... } }`
    * @param {object} attrs.variables Variables clause of GraphQL POST body
-   * @param {object} [attrs.options={}] Options to pass to request. See
-   *    [documentation](https://github.com/request/request#requestoptions-callback)
+   * @param {object} [attrs.options={}] Options to pass to got. See
+   *    [documentation](https://github.com/sindresorhus/got/blob/main/documentation/2-options.md)
    * @param {object} [attrs.httpErrorMessages={}] Key-value map of HTTP status codes
    *    and custom error messages e.g: `{ 404: 'package not found' }`.
    *    This can be used to extend or override the
    *    [default](https://github.com/badges/shields/blob/master/core/base-service/check-error-response.js#L5)
+   * @param {object} [attrs.systemErrors={}] Key-value map of got network exception codes
+   *    and an object of params to pass when we construct an Inaccessible exception object
+   *    e.g: `{ ECONNRESET: { prettyMessage: 'connection reset' } }`.
+   *    See {@link https://github.com/sindresorhus/got/blob/main/documentation/7-retry.md#errorcodes got error codes}
+   *    for allowed keys
+   *    and {@link module:core/base-service/errors~RuntimeErrorProps} for allowed values
+   * @param {number[]} [attrs.logErrors=[429]] An array of http error codes
+   *    that will be logged (to sentry, if configured).
+   * @param {Function} [attrs.transformJson=data => data] Function which takes the raw json and transforms it before
+   * further processing. In case of multiple query in a single graphql call and few of them
+   * throw error, partial data might be used ignoring the error.
    * @param {Function} [attrs.transformErrors=defaultTransformErrors]
    *    Function which takes an errors object from a GraphQL
    *    response and returns an instance of ShieldsRuntimeError.
    *    The default is to return the first entry of the `errors` array as
    *    an InvalidResponse.
    * @returns {object} Parsed response
-   * @see https://github.com/request/request#requestoptions-callback
+   * @see https://github.com/sindresorhus/got/blob/main/documentation/2-options.md
    */
   async _requestGraphql({
     schema,
@@ -61,6 +70,9 @@ class BaseGraphqlService extends BaseService {
     variables = {},
     options = {},
     httpErrorMessages = {},
+    systemErrors = {},
+    logErrors = [429],
+    transformJson = data => data,
     transformErrors = defaultTransformErrors,
   }) {
     const mergedOptions = {
@@ -72,16 +84,18 @@ class BaseGraphqlService extends BaseService {
     const { buffer } = await this._request({
       url,
       options: mergedOptions,
-      errorMessages: httpErrorMessages,
+      httpErrors: httpErrorMessages,
+      systemErrors,
+      logErrors,
     })
-    const json = this._parseJson(buffer)
+    const json = transformJson(this._parseJson(buffer))
     if (json.errors) {
       const exception = transformErrors(json.errors)
       if (exception instanceof ShieldsRuntimeError) {
         throw exception
       } else {
         throw Error(
-          `transformErrors() must return a ShieldsRuntimeError; got ${exception}`
+          `transformErrors() must return a ShieldsRuntimeError; got ${exception}`,
         )
       }
     }
@@ -89,4 +103,4 @@ class BaseGraphqlService extends BaseService {
   }
 }
 
-module.exports = BaseGraphqlService
+export default BaseGraphqlService
